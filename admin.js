@@ -61,7 +61,6 @@
     loadAll();
     startAutoRefresh();
     loadArchive();
-    if(window.QRCode) QRCode.toCanvas($("qr"),new URL("./",location.href).href,{width:220});
   }
 
   async function loadAll() {
@@ -327,7 +326,6 @@
         .from("orders")
         .select(`
           id,
-          paid,
           event_key,
           teacher_name,
           room,
@@ -441,184 +439,10 @@
       ? Math.round(completed / total * 100)
       : 0;
 
-    panel.style.cssText = `
-      border:1px solid #d1d5db;
-      border-radius:14px;
-      padding:18px;
-      margin:18px 0;
-    `;
-
-    panel.innerHTML = `
-      <h2 style="margin:0 0 5px;">
-        Produktübersicht
-      </h2>
-
-      <small style="opacity:0.7;">
-        Live-Zusammenfassung aller Bestellungen
-      </small>
-
-      <div style="
-        display:grid;
-        grid-template-columns:repeat(3,minmax(0,1fr));
-        gap:8px;
-        margin:18px 0;
-      ">
-
-        <div style="
-          background:#eff6ff;
-          color:#1d4ed8;
-          padding:12px 6px;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Gesamt</small>
-          <div style="font-size:28px;font-weight:bold;">
-            ${total}
-          </div>
-        </div>
-
-        <div style="
-          background:#fff7ed;
-          color:#c2410c;
-          padding:12px 6px;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Noch offen</small>
-          <div style="font-size:28px;font-weight:bold;">
-            ${open}
-          </div>
-        </div>
-
-        <div style="
-          background:#dcfce7;
-          color:#15803d;
-          padding:12px 6px;
-          border-radius:10px;
-          text-align:center;
-        ">
-          <small>Erledigt</small>
-          <div style="font-size:28px;font-weight:bold;">
-            ${completed}
-          </div>
-        </div>
-
-      </div>
-
-      <div style="overflow-x:auto;">
-        <table style="
-          width:100%;
-          border-collapse:collapse;
-          font-size:14px;
-        ">
-          <thead>
-            <tr style="border-bottom:2px solid #d1d5db;">
-              <th style="text-align:left;padding:10px 4px;">
-                Produkt
-              </th>
-              <th style="text-align:center;padding:10px 4px;">
-                Gesamt
-              </th>
-              <th style="text-align:center;padding:10px 4px;">
-                Offen
-              </th>
-              <th style="text-align:center;padding:10px 4px;">
-                Fertig
-              </th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${items.map(p => `
-              <tr style="
-                border-bottom:1px solid #d1d5db;
-                ${p.open === 0
-                  ? "background:#dcfce7;color:#14532d;"
-                  : ""}
-              ">
-                <td style="padding:12px 4px;">
-                  <strong>${esc(p.name)}</strong>
-                </td>
-
-                <td style="text-align:center;">
-                  ${p.total}
-                </td>
-
-                <td style="
-                  text-align:center;
-                  color:#c2410c;
-                  font-weight:bold;
-                ">
-                  ${p.open}
-                </td>
-
-                <td style="
-                  text-align:center;
-                  color:#15803d;
-                  font-weight:bold;
-                ">
-                  ${p.completed}
-                </td>
-              </tr>
-            `).join("")}
-
-            ${items.length === 0 ? `
-              <tr>
-                <td colspan="4"
-                  style="padding:20px;text-align:center;">
-                  Noch keine Produkte bestellt.
-                </td>
-              </tr>
-            ` : ""}
-          </tbody>
-
-          ${items.length ? `
-            <tfoot>
-              <tr style="font-weight:bold;">
-                <td style="padding:12px 4px;">
-                  Summe
-                </td>
-                <td style="text-align:center;">
-                  ${total}
-                </td>
-                <td style="text-align:center;color:#c2410c;">
-                  ${open}
-                </td>
-                <td style="text-align:center;color:#15803d;">
-                  ${completed}
-                </td>
-              </tr>
-            </tfoot>
-          ` : ""}
-        </table>
-      </div>
-
-      <div style="margin-top:20px;">
-        <div style="
-          display:flex;
-          justify-content:space-between;
-          margin-bottom:8px;
-        ">
-          <small>Bearbeitungsfortschritt</small>
-          <strong>${progress} %</strong>
-        </div>
-
-        <div style="
-          height:12px;
-          background:#e5e7eb;
-          border-radius:20px;
-          overflow:hidden;
-        ">
-          <div style="
-            width:${progress}%;
-            height:100%;
-            background:#16a34a;
-            border-radius:20px;
-            transition:width 0.3s;
-          "></div>
-        </div>
-      </div>
-    `;
+    panel.className = "product-summary";
+    panel.innerHTML = `<div class="summary-heading"><div><div class="eyebrow">ARTIKEL IM ÜBERBLICK</div><h2>Produktübersicht</h2></div><strong>${progress} % erledigt</strong></div>
+      <div class="summary-progress" role="progressbar" aria-label="Erledigte Artikel" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100"><span style="width:${progress}%"></span></div>
+      <div class="summary-scroll"><table class="summary-table"><thead><tr><th>Produkt</th><th>Gesamt</th><th>Offen</th><th>Fertig</th></tr></thead><tbody>${items.map(p=>`<tr class="${p.open===0?'finished':''}"><td>${esc(p.name)}</td><td>${p.total}</td><td>${p.open}</td><td>${p.completed}</td></tr>`).join("") || '<tr><td colspan="4">Noch keine Artikel bestellt.</td></tr>'}</tbody><tfoot><tr><th>Summe</th><td>${total}</td><td>${open}</td><td>${completed}</td></tr></tfoot></table></div>`;
   }
 
   // EINZELNE BESTELLUNGEN ANZEIGEN
@@ -641,92 +465,19 @@
     $("stat-items").textContent = count;
     $("stat-total").textContent = money(total);
 
-    $("orders-list").innerHTML = orders.length
-      ? orders.filter(matchesOrder).map(o => {
-
-        const sum = (o.order_items || []).reduce(
-          (s, i) => s + Number(i.unit_price) * i.quantity,
-          0
-        );
-
-        const date = new Date(o.created_at).toLocaleString(
-          "de-DE",
-          {
-            dateStyle: "short",
-            timeStyle: "short"
-          }
-        );
-
-        return `
-          <article class="order-row"
-            style="${o.completed
-              ? "background:#dcfce7;color:#14532d;"
-              : ""}">
-
-            <div class="order-meta">
-              <strong>${esc(o.teacher_name)}</strong>
-
-              <small>
-                ${o.place_type === "Tisch" ? "Tisch" : "Raum"}: ${esc(o.room || "Nicht angegeben")}
-              </small>
-
-              <small>${date}</small>
-            </div>
-
-            <div class="order-detail">
-              ${(o.order_items || []).map(i =>
-                `${i.quantity} × ${esc(
-                  i.product_name ||
-                  i.products?.name ||
-                  "Produkt"
-                )}`
-              ).join("<br>")}
-
-              ${o.note
-                ? `<small class="order-note">${esc(o.note)}</small>`
-                : ""}
-            </div>
-
-            <div>
-              <strong>${money(sum)}</strong><label><input type="checkbox" data-paid="${o.id}" ${o.paid ? "checked" : ""}> Bezahlt</label><button class="mini-btn" data-print="${o.id}">Drucken</button>
-
-              <label style="
-                display:flex;
-                gap:8px;
-                align-items:center;
-                margin-top:8px;
-                cursor:pointer;
-              ">
-                <input
-                  type="checkbox"
-                  data-complete="${o.id}"
-                  ${o.completed ? "checked" : ""}
-                  style="
-                    width:18px;
-                    height:18px;
-                    accent-color:#16a34a;
-                    cursor:pointer;
-                  "
-                >
-                Erledigt
-              </label>
-
-              <button
-                type="button"
-                data-delete="${o.id}"
-                style="${deleteStyle}margin-top:8px;">
-                Löschen
-              </button>
-            </div>
-
-          </article>
-        `;
-
-      }).join("")
-      : '<p class="muted">Noch keine Bestellungen vorhanden.</p>';
+    $("stat-open").textContent = orders.filter(o=>!o.completed).length;
+    const visible = orders.filter(matchesOrder).sort((a,b)=>Number(a.completed)-Number(b.completed));
+    $("orders-list").innerHTML = visible.length ? visible.map(o=>{
+      const sum=(o.order_items||[]).reduce((n,i)=>n+Number(i.unit_price)*Number(i.quantity),0);
+      const date=new Date(o.created_at).toLocaleString("de-DE",{dateStyle:"short",timeStyle:"short"});
+      return `<article class="order-row order-entry ${o.completed?'is-done':''}">
+        <div class="order-meta"><div class="order-state">${o.completed?'✓ Erledigt':'Offen'}</div><strong>${esc(o.teacher_name)}</strong><small>${o.place_type==='Tisch'?'Tisch':'Raum'}: ${esc(o.room||'Nicht angegeben')}</small><small>${esc(date)}</small></div>
+        <div class="order-detail">${(o.order_items||[]).map(i=>`<div class="order-item"><span><b>${i.quantity} ×</b> ${esc(i.product_name||i.products?.name||'Produkt')}</span><span>${money(Number(i.unit_price)*Number(i.quantity))}</span></div>`).join('')}${o.note?`<small class="order-note">Anmerkung: ${esc(o.note)}</small>`:''}</div>
+        <div class="order-actions"><strong class="order-price">${money(sum)}</strong><label class="order-check"><input type="checkbox" data-complete="${esc(o.id)}" ${o.completed?'checked':''}> Erledigt</label><button type="button" class="delete-btn" data-delete="${esc(o.id)}">Löschen</button></div>
+      </article>`;
+    }).join('') : `<p class="empty-orders">${orders.length?'Keine passenden Bestellungen gefunden.':'Noch keine Bestellungen eingegangen.'}</p>`;
 
     bindOrderActions();
-    bindExtras();
   }
 
   // BESTELLUNGEN ABHAKEN UND LÖSCHEN
@@ -1092,7 +843,7 @@
       "Menge",
       "Einzelpreis",
       "Anmerkung",
-      "Status", "Zahlung"
+      "Status"
     ]];
 
     orders.forEach(o => {
@@ -1107,7 +858,7 @@
           i.quantity,
           Number(i.unit_price).toFixed(2),
           o.note || "",
-          o.completed ? "Erledigt" : "Offen", o.paid ? "Bezahlt" : "Unbezahlt"
+          o.completed ? "Erledigt" : "Offen"
         ]);
       });
     });
@@ -1210,6 +961,7 @@
     }
 
     $("stat-orders").textContent = "0";
+    $("stat-open").textContent = "0";
     $("stat-items").textContent = "0";
     $("stat-total").textContent = money(0);
 
@@ -1243,15 +995,13 @@
   }
 
   function localDate(v){const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-  function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;return (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed || f==="paid"&&o.paid || f==="unpaid"&&!o.paid);}
+  function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;return (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed);}
   $("order-search").oninput=renderOrders; $("order-filter").onchange=renderOrders;
   function beep(){try{const o=sound.createOscillator(),g=sound.createGain();o.connect(g);g.connect(sound.destination);g.gain.value=.08;o.frequency.value=660;o.start();o.stop(sound.currentTime+.2);}catch(e){}}
   $("sound").onclick=async()=>{if(sound){await sound.close();sound=null;$("sound").textContent="Signalton aktivieren";}else{sound=new (window.AudioContext||window.webkitAudioContext)();await sound.resume();beep();$("sound").textContent="Signalton deaktivieren";}};
-  function bindExtras(){document.querySelectorAll("[data-paid]").forEach(b=>b.onchange=async()=>{if(orderAction||loadingOrders){b.checked=!b.checked;return;}orderAction=true;try{const {error}=await db.from("orders").update({paid:b.checked}).eq("id",b.dataset.paid).select("id").single();if(error){b.checked=!b.checked;message(error.message);}else{const o=orders.find(x=>x.id===b.dataset.paid);if(o)o.paid=b.checked;}}finally{orderAction=false;}});document.querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>{const o=orders.find(x=>x.id===b.dataset.print);const w=window.open("","_blank");if(!w)return message("Bitte Pop-ups erlauben.");w.document.body.textContent="";const pre=w.document.createElement("pre");pre.textContent=[eventName(),o.teacher_name,o.place_type+": "+o.room,...o.order_items.map(i=>i.quantity+" × "+(i.product_name||i.products?.name)),o.note].join("\n");w.document.body.append(pre);w.print();});}
   async function loadArchive(){const {data,error}=await db.from("event_archive").select("*").order("archived_at",{ascending:false});if(error)return message(error.message);$("archive-select").innerHTML='<option value="">Archiv auswählen</option>'+data.map(e=>`<option value="${e.event_key}">${esc(e.settings.title)} · ${esc(e.settings.event_date||"")}</option>`).join("");}
-  $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.paid?"Bezahlt":"Unbezahlt"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
+  $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.completed?"Erledigt":"Offen"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
   $("archive-event").onclick=async()=>{if(!confirm("Aktuelle Veranstaltung archivieren? Die Bestellannahme wird geschlossen. Produkte und Restbestände bleiben erhalten."))return;const {error}=await db.rpc("archive_event");if(error)return message(error.message);seen=null;await loadEvent();await loadOrders();await loadArchive();};
-  $("qr-download").onclick=()=>{if(!window.QRCode)return message("QR-Bibliothek nicht geladen.");const a=document.createElement("a");a.href=$("qr").toDataURL();a.download="bestellportal-qr.png";a.click();};
   init();
 
 })();

@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="responsive.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script><script defer src="admin.js"></script>
+  <script defer src="admin.js"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -32,11 +32,15 @@
       <div class="admin-title-row"><div><div class="eyebrow">ÜBERSICHT</div><h1 id="admin-event-heading">Veranstaltung verwalten</h1><p class="muted">Bestellungen, Produkte und Veranstaltungstermin an einem Ort.</p></div><button class="outline-btn" id="logout">Abmelden</button></div>
       <div class="stats-grid">
         <article class="stat-card"><span>Bestellungen</span><strong id="stat-orders">–</strong></article>
-        <article class="stat-card"><span>Bestellte Artikel</span><strong id="stat-items">–</strong></article>
+        <article class="stat-card"><span>Offene Bestellungen</span><strong id="stat-open">–</strong></article><article class="stat-card"><span>Bestellte Artikel</span><strong id="stat-items">–</strong></article>
         <article class="stat-card"><span>Voraussichtlicher Gesamtwert</span><strong id="stat-total">–</strong></article>
       </div>
 
-      <div class="admin-grid">
+      <section class="panel orders-panel">
+        <div class="panel-heading"><div><div class="eyebrow">EINGÄNGE</div><h2>Bestellungen</h2></div><button class="outline-btn" id="export-csv">CSV exportieren</button></div>
+        <div class="extra-tools"><input type="search" aria-label="Bestellungen suchen" id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter" aria-label="Bestellstatus filtern"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
+      </section>
+      <div class="admin-grid" id="settings-grid">
         <section class="panel">
           <div class="panel-heading"><div><div class="eyebrow">VERANSTALTUNG</div><h2>Termin & Kalender</h2></div></div>
           <form id="event-form" class="stack-form">
@@ -66,11 +70,7 @@
         </section>
       </div>
 
-      <section class="panel orders-panel">
-        <div class="panel-heading"><div><div class="eyebrow">EINGÄNGE</div><h2>Bestellungen</h2></div><button class="outline-btn" id="export-csv">CSV exportieren</button></div>
-        <div class="extra-tools"><input id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option><option value="unpaid">Unbezahlt</option><option value="paid">Bezahlt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
-      </section>
-      <section class="panel"><h2>Veranstaltungsarchiv</h2><button id="archive-event" class="outline-btn">Archivieren und neue Veranstaltung starten</button><select id="archive-select"><option value="">Aktuelle Veranstaltung</option></select><div id="archive-list"></div></section><section class="panel"><h2>QR-Code</h2><canvas id="qr"></canvas><button id="qr-download" class="outline-btn">QR-Code herunterladen</button></section><p class="admin-notice" id="admin-message" role="status"></p>
+      <section class="panel"><h2>Veranstaltungsarchiv</h2><button id="archive-event" class="outline-btn">Archivieren und neue Veranstaltung starten</button><select id="archive-select"><option value="">Aktuelle Veranstaltung</option></select><div id="archive-list"></div></section><p class="admin-notice" id="admin-message" role="status"></p>
     </section>
   </main>
   <footer><span>Eichendorff · Administration</span><span>Nur für berechtigte Personen</span></footer>
