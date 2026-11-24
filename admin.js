@@ -27,6 +27,16 @@
     }[c])
   );
 
+  const deleteStyle = `
+    background:#dc2626;
+    color:white;
+    border:none;
+    border-radius:6px;
+    padding:7px 12px;
+    cursor:pointer;
+    font-size:13px;
+  `;
+
   function message(s) {
     $("admin-message").textContent = s;
   }
@@ -45,7 +55,7 @@
     ]);
   }
 
-  // PRODUKTE
+  // PRODUKTE LADEN
 
   async function loadProducts() {
     const { data, error } = await db
@@ -54,7 +64,10 @@
       .order("category")
       .order("name");
 
-    if (error) return message(error.message);
+    if (error) {
+      message(error.message);
+      return false;
+    }
 
     products = data || [];
 
@@ -67,9 +80,22 @@
             ${p.active ? "" : "· ausgeblendet"}
           </small>
         </span>
-        <button class="mini-btn" data-edit="${p.id}">
-          Bearbeiten
-        </button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button
+            type="button"
+            class="mini-btn"
+            data-edit="${p.id}">
+            Bearbeiten
+          </button>
+
+          <button
+            type="button"
+            data-delete-product="${p.id}"
+            style="${deleteStyle}">
+            Löschen
+          </button>
+        </div>
       </div>
     `).join("") ||
       '<p class="muted">Noch keine Produkte angelegt.</p>';
@@ -79,7 +105,76 @@
       .forEach(b => b.addEventListener("click", () =>
         editProduct(b.dataset.edit)
       ));
+
+    // PRODUKTE LÖSCHEN
+
+    $("admin-products")
+      .querySelectorAll("[data-delete-product]")
+      .forEach(button => {
+
+        button.addEventListener("click", async () => {
+
+          const product = products.find(
+            p => p.id === button.dataset.deleteProduct
+          );
+
+          if (!product) return;
+
+          const confirmed = confirm(
+            'Produkt "' + product.name +
+            '" wirklich endgültig löschen?\n\n' +
+            "Bestehende Bestellungen bleiben erhalten."
+          );
+
+          if (!confirmed) return;
+
+          button.disabled = true;
+          button.textContent = "Wird gelöscht …";
+
+          const { data, error } = await db
+            .from("products")
+            .delete()
+            .eq("id", product.id)
+            .select("id")
+            .single();
+
+          if (error || !data) {
+            button.disabled = false;
+            button.textContent = "Löschen";
+
+            message(
+              "Produkt konnte nicht gelöscht werden: " +
+              (error?.message || "Unbekannter Fehler")
+            );
+
+            return;
+          }
+
+          if ($("product-id").value === product.id) {
+            resetProduct();
+          }
+
+          const results = await Promise.all([
+            loadProducts(),
+            loadOrders()
+          ]);
+
+          if (results.every(Boolean)) {
+            message("Produkt wurde endgültig gelöscht.");
+          } else {
+            message(
+              "Produkt gelöscht. Bitte Seite neu laden."
+            );
+          }
+
+        });
+
+      });
+
+    return true;
   }
+
+  // PRODUKTE BEARBEITEN
 
   function editProduct(id) {
     const p = products.find(x => x.id === id);
@@ -128,8 +223,10 @@
     }
 
     resetProduct();
-    await loadProducts();
-    message("Produkt gespeichert.");
+
+    if (await loadProducts()) {
+      message("Produkt gespeichert.");
+    }
   });
 
   $("cancel-edit").addEventListener("click", resetProduct);
@@ -149,6 +246,7 @@
         order_items(
           quantity,
           unit_price,
+          product_name,
           products(name,category)
         )
       `)
@@ -212,7 +310,11 @@
 
             <div class="order-detail">
               ${(o.order_items || []).map(i =>
-                `${i.quantity} × ${esc(i.products?.name || "Produkt")}`
+                `${i.quantity} × ${esc(
+                  i.product_name ||
+                  i.products?.name ||
+                  "Produkt"
+                )}`
               ).join("<br>")}
 
               ${o.note
@@ -247,22 +349,11 @@
               <button
                 type="button"
                 data-delete="${o.id}"
-                style="
-                  background:#dc2626;
-                  color:white;
-                  border:none;
-                  border-radius:6px;
-                  padding:7px 12px;
-                  margin-top:8px;
-                  cursor:pointer;
-                  font-size:13px;
-                "
-              >
+                style="${deleteStyle}margin-top:8px;">
                 Löschen
               </button>
 
             </div>
-
           </article>
         `;
 
@@ -349,7 +440,6 @@
             .single();
 
           if (error || !data) {
-
             button.disabled = false;
             button.textContent = "Löschen";
 
@@ -370,8 +460,7 @@
             message("Bestellung wurde endgültig gelöscht.");
           } else {
             message(
-              "Bestellung gelöscht. Bitte Seite neu laden, " +
-              "um die Übersicht zu aktualisieren."
+              "Bestellung gelöscht. Bitte Seite neu laden."
             );
           }
 
@@ -508,7 +597,7 @@
           o.teacher_name,
           o.room || "Nicht angegeben",
           new Date(o.created_at).toLocaleString("de-DE"),
-          i.products?.name || "",
+          i.product_name || i.products?.name || "",
           i.quantity,
           Number(i.unit_price).toFixed(2),
           o.note || "",
