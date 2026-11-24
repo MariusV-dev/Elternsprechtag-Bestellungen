@@ -54,7 +54,7 @@
     if (ee) console.warn("Veranstaltung konnte nicht geladen werden:", ee.message);
     if(pe) { $("product-groups").innerHTML=`<div class="setup-message">Produkte konnten nicht geladen werden: ${escapeHtml(pe.message)}</div>`; return; }
     products = p||[]; eventInfo=ee?null:e;
-    if(!isOpen()) $("event-date-label").after(Object.assign(document.createElement("p"),{textContent:"Bestellannahme geschlossen."}));
+    updateStatus(); lastOpen=isOpen();
     const place = e?.place_type === "Tisch" ? "Tisch" : "Raum";
     roomLabel.textContent = place;
     roomInput.placeholder = place === "Tisch" ? "Bitte Tischnummer eingeben" : "Bitte Raumbezeichnung eingeben";
@@ -99,7 +99,19 @@
     cart.clear(); $("order-form").reset(); window.scrollTo({top:0,behavior:"smooth"});
   });
   $("new-order").addEventListener("click",()=>{ $("confirmation").classList.add("hidden"); document.querySelector(".order-layout").classList.remove("hidden"); renderProducts();renderCart(); });
-  function isOpen(){return !!eventInfo?.accepting && (!eventInfo.deadline || Date.now()<Date.parse(eventInfo.deadline));}
-  setInterval(()=>{if(!isOpen()) $("submit-order").disabled=true;},1000);
+  function isOpen(){return !!eventInfo?.accepting && (!eventInfo.opens_at || Date.now()>=Date.parse(eventInfo.opens_at)) && (!eventInfo.deadline || Date.now()<Date.parse(eventInfo.deadline));}
+  const formatTime = v => new Intl.DateTimeFormat("de-DE",{dateStyle:"medium",timeStyle:"short",timeZone:"Europe/Berlin"}).format(new Date(v));
+  function updateStatus(){
+    const el=$("order-status"); let title, detail, state;
+    if(!eventInfo){title="Bestellstatus nicht verfügbar";detail="Bitte lade die Seite erneut.";state="closed";}
+    else if(!eventInfo.accepting){title="Bestellannahme geschlossen";detail="Aktuell sind keine Bestellungen möglich.";state="closed";}
+    else if(eventInfo.deadline && Date.now()>=Date.parse(eventInfo.deadline)){title="Bestellannahme beendet";detail="Bestellschluss: "+formatTime(eventInfo.deadline)+" Uhr";state="closed";}
+    else if(eventInfo.opens_at && Date.now()<Date.parse(eventInfo.opens_at)){title="Bestellungen bald möglich";detail="Ab "+formatTime(eventInfo.opens_at)+" Uhr";state="waiting";}
+    else {title="Bestellungen möglich";detail=eventInfo.deadline?"Bis "+formatTime(eventInfo.deadline)+" Uhr":"Du kannst jetzt bestellen.";state="open";}
+    const key=title+detail;if(el.dataset.key!==key){el.dataset.key=key;el.dataset.state=state;el.replaceChildren(Object.assign(document.createElement("strong"),{textContent:title}),Object.assign(document.createElement("span"),{textContent:detail}));}
+  }
+  let lastOpen=false;
+  setInterval(()=>{if(!eventInfo)return;updateStatus();const open=isOpen();if(open!==lastOpen){lastOpen=open;renderCart();}},1000);
+  setInterval(async()=>{if(!db||document.hidden)return;try{const {data,error}=await db.from("event_settings").select("*").eq("id",1).maybeSingle();if(!error){if(data?.event_key!==eventInfo?.event_key){location.reload();return;}eventInfo=data;updateStatus();}}catch{}},10000);
   init();
 })();

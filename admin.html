@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#17365d">
   <title>Administration · Bestellportal</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="responsive.css?v=20261125-2">
+  <link rel="stylesheet" href="responsive.css?v=20261125-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=20261125-3"></script>
+  <script defer src="admin.js?v=20261125-4"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -49,7 +49,7 @@
             <label for="event-start">Beginn</label><input id="event-start" type="time" value="18:00" required>
             <label for="event-end">Ende</label><input id="event-end" type="time" value="20:00" required>
             <label for="event-place-type">Angabe bei der Bestellung</label><select id="event-place-type"><option value="Raum">Raum</option><option value="Tisch">Tisch</option></select>
-            <label class="check-label"><input type="checkbox" id="accepting" checked> Bestellannahme geöffnet</label><label for="deadline">Bestellschluss (optional)</label><input type="datetime-local" id="deadline"><label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
+            <label class="check-label"><input type="checkbox" id="accepting" checked> Bestellannahme aktiviert</label><label for="opens-at">Bestellbeginn (optional)</label><input type="datetime-local" id="opens-at"><p class="fine-print">Leer = sofort, sofern die Bestellannahme aktiviert ist.</p><label for="deadline">Bestellschluss (optional)</label><input type="datetime-local" id="deadline"><label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
             <button class="primary-btn" type="submit">Termin speichern</button>
           </form>
           <div class="calendar-actions"><button class="outline-btn" id="download-ics">Kalendereintrag (.ics) herunterladen</button><p class="fine-print">Importiere die Datei in deinen Kalender und aktiviere dort eine Erinnerung. Der Download richtet keine automatische Benachrichtigung ein.</p></div>

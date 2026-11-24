@@ -679,6 +679,7 @@
     updateEventHeading();
     if (!savedEvent) return;
     $("accepting").checked = savedEvent.accepting;
+    $("opens-at").value = savedEvent.opens_at ? localDate(savedEvent.opens_at) : "";
     $("deadline").value = savedEvent.deadline ? localDate(savedEvent.deadline) : "";
 
     $("event-place-type").value = savedEvent.place_type === "Tisch" ? "Tisch" : "Raum";
@@ -770,6 +771,7 @@
       id: 1,
       place_type: $("event-place-type").value,
       accepting: $("accepting").checked,
+      opens_at: $("opens-at").value ? new Date($("opens-at").value).toISOString() : null,
       deadline: $("deadline").value ? new Date($("deadline").value).toISOString() : null,
       title: $("event-title").value.trim() || "Veranstaltung",
       event_date: $("event-date").value,
@@ -778,6 +780,7 @@
       location: $("event-location").value.trim()
     };
 
+    if (row.opens_at && row.deadline && Date.parse(row.opens_at) >= Date.parse(row.deadline)) return message("Der Bestellschluss muss nach dem Bestellbeginn liegen.");
     if (!row.event_date) {
       return message("Bitte ein Veranstaltungsdatum auswählen.");
     }
