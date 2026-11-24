@@ -50,13 +50,36 @@
     $("event-date-label").textContent = e?.event_date ? new Intl.DateTimeFormat("de-DE",{dateStyle:"full"}).format(new Date(e.event_date+"T12:00:00")) : "Termin wird bekannt gegeben";
     renderProducts(); renderCart();
   }
+  // Pflichtfeld für den Raum dynamisch ergänzen, damit index.html nicht geändert werden muss.
+  const roomWrap = document.createElement("div");
+  roomWrap.className = "form-field";
+  roomWrap.style.marginTop = "14px";
+  const roomLabel = document.createElement("label");
+  roomLabel.htmlFor = "teacher-room";
+  roomLabel.textContent = "Raum *";
+  roomLabel.style.display = "block";
+  roomLabel.style.marginBottom = "6px";
+  const roomInput = document.createElement("input");
+  roomInput.type = "text";
+  roomInput.id = "teacher-room";
+  roomInput.name = "room";
+  roomInput.placeholder = "z. B. C4, 210 oder Pavillon";
+  roomInput.required = true;
+  roomInput.maxLength = 100;
+  roomInput.autocomplete = "off";
+  roomInput.style.width = "100%";
+  roomInput.style.boxSizing = "border-box";
+  roomInput.setAttribute("aria-required", "true");
+  roomWrap.append(roomLabel, roomInput);
+  $("order-form").insertBefore(roomWrap, $("submit-order"));
+
   $("order-form").addEventListener("submit",async ev=>{
     ev.preventDefault();
-    const name=$("teacher-name").value.trim(), note=$("teacher-note").value.trim();
+    const name=$("teacher-name").value.trim(), room=$("teacher-room").value.trim(), note=$("teacher-note").value.trim();
     const items=[...cart.entries()].filter(([,q])=>q>0).map(([product_id,quantity])=>({product_id,quantity}));
-    if(!name||!items.length) return;
+    if(!name||!room||!items.length) return;
     $("submit-order").disabled=true; $("submit-order").textContent="Wird gesendet …";
-    const {data,error}=await db.rpc("submit_order",{p_teacher_name:name,p_note:note,p_items:items});
+    const {data,error}=await db.rpc("submit_order",{p_teacher_name:name,p_room:room,p_note:note,p_items:items});
     $("submit-order").innerHTML='Bestellung absenden <span>→</span>';
     if(error) { alert("Die Bestellung konnte nicht gespeichert werden. Bitte versuche es erneut oder informiere die Organisation.\n\n"+error.message); renderCart(); return; }
     $("confirmation-text").textContent=`Danke, ${name}. Deine Bestellung wurde erfolgreich übermittelt.`;
