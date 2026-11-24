@@ -155,10 +155,11 @@
       .order("created_at", { ascending: false });
 
     if (error) {
-      return message(
+      message(
         "Bestellungen konnten nicht geladen werden: " +
         error.message
       );
+      return false;
     }
 
     orders = data || [];
@@ -242,6 +243,24 @@
                 >
                 Erledigt
               </label>
+
+              <button
+                type="button"
+                data-delete="${o.id}"
+                style="
+                  background:#dc2626;
+                  color:white;
+                  border:none;
+                  border-radius:6px;
+                  padding:7px 12px;
+                  margin-top:8px;
+                  cursor:pointer;
+                  font-size:13px;
+                "
+              >
+                Löschen
+              </button>
+
             </div>
 
           </article>
@@ -249,6 +268,8 @@
 
       }).join("")
       : '<p class="muted">Noch keine Bestellungen vorhanden.</p>';
+
+    // ERLEDIGT-STATUS SPEICHERN
 
     $("orders-list")
       .querySelectorAll("[data-complete]")
@@ -278,17 +299,87 @@
             return;
           }
 
-          await loadOrders();
+          const refreshed = await loadOrders();
 
-          message(
-            completed
-              ? "Bestellung als erledigt markiert."
-              : "Bestellung wieder geöffnet."
-          );
+          if (refreshed) {
+            message(
+              completed
+                ? "Bestellung als erledigt markiert."
+                : "Bestellung wieder geöffnet."
+            );
+          } else {
+            box.disabled = false;
+          }
 
         });
 
       });
+
+    // BESTELLUNGEN LÖSCHEN
+
+    $("orders-list")
+      .querySelectorAll("[data-delete]")
+      .forEach(button => {
+
+        button.addEventListener("click", async () => {
+
+          const order = orders.find(
+            o => o.id === button.dataset.delete
+          );
+
+          if (!order) return;
+
+          const confirmed = confirm(
+            "Bestellung von " + order.teacher_name +
+            " (Raum: " + (order.room || "Nicht angegeben") +
+            ") wirklich endgültig löschen?\n\n" +
+            "Diese Aktion kann nicht rückgängig gemacht werden."
+          );
+
+          if (!confirmed) return;
+
+          button.disabled = true;
+          button.textContent = "Wird gelöscht …";
+
+          const { data, error } = await db
+            .from("orders")
+            .delete()
+            .eq("id", order.id)
+            .select("id")
+            .single();
+
+          if (error || !data) {
+
+            button.disabled = false;
+            button.textContent = "Löschen";
+
+            message(
+              "Bestellung konnte nicht gelöscht werden: " +
+              (error?.message || "Unbekannter Fehler")
+            );
+
+            return;
+          }
+
+          orders = orders.filter(o => o.id !== order.id);
+          button.closest(".order-row")?.remove();
+
+          const refreshed = await loadOrders();
+
+          if (refreshed) {
+            message("Bestellung wurde endgültig gelöscht.");
+          } else {
+            message(
+              "Bestellung gelöscht. Bitte Seite neu laden, " +
+              "um die Übersicht zu aktualisieren."
+            );
+          }
+
+        });
+
+      });
+
+    return true;
   }
 
   // VERANSTALTUNG
@@ -482,6 +573,9 @@
 
     orders = [];
     products = [];
+
+    $("orders-list").innerHTML = "";
+    $("admin-products").innerHTML = "";
 
     $("dashboard").classList.add("hidden");
     $("login-panel").classList.remove("hidden");
