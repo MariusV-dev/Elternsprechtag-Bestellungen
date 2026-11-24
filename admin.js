@@ -18,7 +18,6 @@
   let orders = [];
   let products = [];
   let savedEvent = null;
-  let sound = null, seen = null;
   let refreshTimer = null;
   let loadingOrders = false;
   let orderAction = false;
@@ -390,8 +389,6 @@
       }
 
       orders = data || [];
-      if (seen && sound && orders.some(o=>!seen.has(o.id))) beep();
-      seen = new Set(orders.map(o=>o.id));
 
       renderOrders();
 
@@ -1056,11 +1053,9 @@
   function localDate(v){const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
   function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;const p=$("payment-filter").value;return (p==="all"||p==="paid"&&o.paid||p==="unpaid"&&!o.paid) && (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed);}
   $("order-search").oninput=renderOrders; $("order-filter").onchange=renderOrders; $("payment-filter").onchange=renderOrders;
-  function beep(){try{const o=sound.createOscillator(),g=sound.createGain();o.connect(g);g.connect(sound.destination);g.gain.value=.08;o.frequency.value=660;o.start();o.stop(sound.currentTime+.2);}catch(e){}}
-  $("sound").onclick=async()=>{if(sound){await sound.close();sound=null;$("sound").textContent="Signalton aktivieren";}else{sound=new (window.AudioContext||window.webkitAudioContext)();await sound.resume();beep();$("sound").textContent="Signalton deaktivieren";}};
   async function loadArchive(){const {data,error}=await db.from("event_archive").select("*").order("archived_at",{ascending:false});if(error)return message(error.message);$("archive-select").innerHTML='<option value="">Archiv auswählen</option>'+data.map(e=>`<option value="${e.event_key}">${esc(e.settings.title)} · ${esc(e.settings.event_date||"")}</option>`).join("");}
   $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.completed?"Erledigt":"Offen"} · ${o.paid?"Bezahlt":"Unbezahlt"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
-  $("archive-event").onclick=async()=>{if(!confirm("Aktuelle Veranstaltung archivieren? Die Bestellannahme wird geschlossen. Produkte und Restbestände bleiben erhalten."))return;const {error}=await db.rpc("archive_event");if(error)return message(error.message);seen=null;await loadEvent();await loadOrders();await loadArchive();};
+  $("archive-event").onclick=async()=>{if(!confirm("Aktuelle Veranstaltung archivieren? Die Bestellannahme wird geschlossen. Produkte und Restbestände bleiben erhalten."))return;const {error}=await db.rpc("archive_event");if(error)return message(error.message);await loadEvent();await loadOrders();await loadArchive();};
   init();
 
 })();

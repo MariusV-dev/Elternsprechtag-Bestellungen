@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="responsive.css?v=20261125-2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=20261125-2"></script>
+  <script defer src="admin.js?v=20261125-3"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -38,7 +38,7 @@
 
       <section class="panel payment-overview" aria-label="Zahlungsübersicht"><div class="summary-heading"><h2>Zahlungsübersicht</h2><strong id="payment-count">–</strong></div><div class="payment-grid"><div><span>Bereits bezahlt</span><strong id="stat-paid">–</strong></div><div><span>Noch zu bezahlen</span><strong id="stat-unpaid">–</strong></div></div><progress id="payment-progress" max="100" value="0" aria-label="Anteil bezahlter Bestellwerte"></progress><p class="muted" id="payment-caption"></p></section><section class="panel orders-panel">
         <div class="panel-heading"><div><div class="eyebrow">EINGÄNGE</div><h2>Bestellungen</h2></div><button class="outline-btn" id="export-csv">CSV exportieren</button></div>
-        <div class="extra-tools"><input type="search" aria-label="Bestellungen suchen" id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter" aria-label="Bestellstatus filtern"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option></select><select id="payment-filter" aria-label="Zahlungsstatus filtern"><option value="all">Alle Zahlungen</option><option value="unpaid">Unbezahlt</option><option value="paid">Bezahlt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
+        <div class="extra-tools"><input type="search" aria-label="Bestellungen suchen" id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter" aria-label="Bestellstatus filtern"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option></select><select id="payment-filter" aria-label="Zahlungsstatus filtern"><option value="all">Alle Zahlungen</option><option value="unpaid">Unbezahlt</option><option value="paid">Bezahlt</option></select></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
       </section>
       <div class="admin-grid" id="settings-grid">
         <section class="panel">
