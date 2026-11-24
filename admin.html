@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#17365d">
   <title>Administration · Bestellportal</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="responsive.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.4.4/build/qrcode.min.js"></script><script defer src="admin.js"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -43,7 +44,8 @@
             <label for="event-date">Datum</label><input id="event-date" type="date" required>
             <label for="event-start">Beginn</label><input id="event-start" type="time" value="18:00" required>
             <label for="event-end">Ende</label><input id="event-end" type="time" value="20:00" required>
-            <label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
+            <label for="event-place-type">Angabe bei der Bestellung</label><select id="event-place-type"><option value="Raum">Raum</option><option value="Tisch">Tisch</option></select>
+            <label class="check-label"><input type="checkbox" id="accepting" checked> Bestellannahme geöffnet</label><label for="deadline">Bestellschluss (optional)</label><input type="datetime-local" id="deadline"><label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
             <button class="primary-btn" type="submit">Termin speichern</button>
           </form>
           <div class="calendar-actions"><button class="outline-btn" id="download-ics">Kalendereintrag (.ics) herunterladen</button><p class="fine-print">Importiere die Datei in deinen Kalender und aktiviere dort eine Erinnerung. Der Download richtet keine automatische Benachrichtigung ein.</p></div>
@@ -54,9 +56,9 @@
           <form id="product-form" class="stack-form">
             <input type="hidden" id="product-id">
             <label for="product-name">Produktname</label><input id="product-name" maxlength="100" placeholder="z. B. Kaffee" required>
-            <label for="product-category">Kategorie</label><select id="product-category"><option>Kaffee</option><option>Tee</option><option>Wasser</option><option>Softdrinks</option><option>Snacks</option><option>Sonstiges</option></select>
+            <label for="product-category">Kategorie</label><select id="product-category"><option>Heißgetränke</option><option>Wasser</option><option>Softdrinks</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
             <label for="product-price">Preis in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
-            <label class="check-label"><input id="product-active" type="checkbox" checked> Für Lehrer sichtbar</label>
+            <label for="stock">Verfügbare Stückzahl (leer = unbegrenzt)</label><input type="number" min="0" step="1" id="stock"><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
             <button class="primary-btn" type="submit" id="save-product">Produkt hinzufügen</button>
             <button class="text-btn hidden" type="button" id="cancel-edit">Bearbeitung abbrechen</button>
           </form>
@@ -66,9 +68,9 @@
 
       <section class="panel orders-panel">
         <div class="panel-heading"><div><div class="eyebrow">EINGÄNGE</div><h2>Bestellungen</h2></div><button class="outline-btn" id="export-csv">CSV exportieren</button></div>
-        <div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
+        <div class="extra-tools"><input id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option><option value="unpaid">Unbezahlt</option><option value="paid">Bezahlt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
       </section>
-      <p class="admin-notice" id="admin-message" role="status"></p>
+      <section class="panel"><h2>Veranstaltungsarchiv</h2><button id="archive-event" class="outline-btn">Archivieren und neue Veranstaltung starten</button><select id="archive-select"><option value="">Aktuelle Veranstaltung</option></select><div id="archive-list"></div></section><section class="panel"><h2>QR-Code</h2><canvas id="qr"></canvas><button id="qr-download" class="outline-btn">QR-Code herunterladen</button></section><p class="admin-notice" id="admin-message" role="status"></p>
     </section>
   </main>
   <footer><span>Eichendorff · Administration</span><span>Nur für berechtigte Personen</span></footer>

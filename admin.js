@@ -18,6 +18,7 @@
   let orders = [];
   let products = [];
   let savedEvent = null;
+  let sound = null, seen = null;
   let refreshTimer = null;
   let loadingOrders = false;
   let orderAction = false;
@@ -59,13 +60,14 @@
     addRefreshButton();
     loadAll();
     startAutoRefresh();
+    loadArchive();
+    if(window.QRCode) QRCode.toCanvas($("qr"),new URL("./",location.href).href,{width:220});
   }
 
   async function loadAll() {
     await Promise.all([
       loadProducts(),
-      loadOrders(),
-      loadEvent()
+      loadEvent().then(loadOrders)
     ]);
   }
 
@@ -262,6 +264,7 @@
     $("product-name").value = p.name;
     $("product-category").value = p.category;
     $("product-price").value = p.price;
+    $("stock").value = p.stock ?? "";
     $("product-active").checked = p.active;
 
     $("save-product").textContent = "Änderungen speichern";
@@ -286,6 +289,7 @@
       name: $("product-name").value.trim(),
       category: $("product-category").value,
       price: Number($("product-price").value),
+      stock: $("stock").value === "" ? null : Number($("stock").value),
       active: $("product-active").checked
     };
 
@@ -323,8 +327,11 @@
         .from("orders")
         .select(`
           id,
+          paid,
+          event_key,
           teacher_name,
           room,
+          place_type,
           completed,
           note,
           created_at,
@@ -335,6 +342,7 @@
             products(name,category)
           )
         `)
+        .eq("event_key", savedEvent?.event_key || "00000000-0000-0000-0000-000000000000")
         .order("created_at", { ascending: false });
 
       if (!loggedIn) return false;
@@ -349,6 +357,8 @@
       }
 
       orders = data || [];
+      if (seen && sound && orders.some(o=>!seen.has(o.id))) beep();
+      seen = new Set(orders.map(o=>o.id));
 
       renderOrders();
 
@@ -632,7 +642,7 @@
     $("stat-total").textContent = money(total);
 
     $("orders-list").innerHTML = orders.length
-      ? orders.map(o => {
+      ? orders.filter(matchesOrder).map(o => {
 
         const sum = (o.order_items || []).reduce(
           (s, i) => s + Number(i.unit_price) * i.quantity,
@@ -657,7 +667,7 @@
               <strong>${esc(o.teacher_name)}</strong>
 
               <small>
-                Raum: ${esc(o.room || "Nicht angegeben")}
+                ${o.place_type === "Tisch" ? "Tisch" : "Raum"}: ${esc(o.room || "Nicht angegeben")}
               </small>
 
               <small>${date}</small>
@@ -678,7 +688,7 @@
             </div>
 
             <div>
-              <strong>${money(sum)}</strong>
+              <strong>${money(sum)}</strong><label><input type="checkbox" data-paid="${o.id}" ${o.paid ? "checked" : ""}> Bezahlt</label><button class="mini-btn" data-print="${o.id}">Drucken</button>
 
               <label style="
                 display:flex;
@@ -716,6 +726,7 @@
       : '<p class="muted">Noch keine Bestellungen vorhanden.</p>';
 
     bindOrderActions();
+    bindExtras();
   }
 
   // BESTELLUNGEN ABHAKEN UND LÖSCHEN
@@ -798,7 +809,7 @@
 
           if (!confirm(
             "Bestellung von " + order.teacher_name +
-            " (Raum: " + (order.room || "Nicht angegeben") +
+            " (" + (order.place_type === "Tisch" ? "Tisch" : "Raum") + ": " + (order.room || "Nicht angegeben") +
             ") wirklich endgültig löschen?\n\n" +
             "Diese Aktion kann nicht rückgängig gemacht werden."
           )) return;
@@ -862,7 +873,10 @@
   function showSavedEvent() {
     updateEventHeading();
     if (!savedEvent) return;
+    $("accepting").checked = savedEvent.accepting;
+    $("deadline").value = savedEvent.deadline ? localDate(savedEvent.deadline) : "";
 
+    $("event-place-type").value = savedEvent.place_type === "Tisch" ? "Tisch" : "Raum";
     $("event-title").value =
       savedEvent.title || "Veranstaltung";
 
@@ -949,6 +963,9 @@
 
     const row = {
       id: 1,
+      place_type: $("event-place-type").value,
+      accepting: $("accepting").checked,
+      deadline: $("deadline").value ? new Date($("deadline").value).toISOString() : null,
       title: $("event-title").value.trim() || "Veranstaltung",
       event_date: $("event-date").value,
       start_time: $("event-start").value || "18:00",
@@ -1068,13 +1085,14 @@
 
     const rows = [[
       "Name",
-      "Raum",
+      "Angabeart",
+      "Raum / Tisch",
       "Bestelldatum",
       "Artikel",
       "Menge",
       "Einzelpreis",
       "Anmerkung",
-      "Status"
+      "Status", "Zahlung"
     ]];
 
     orders.forEach(o => {
@@ -1082,13 +1100,14 @@
 
         rows.push([
           o.teacher_name,
+          o.place_type === "Tisch" ? "Tisch" : "Raum",
           o.room || "Nicht angegeben",
           new Date(o.created_at).toLocaleString("de-DE"),
           i.product_name || i.products?.name || "",
           i.quantity,
           Number(i.unit_price).toFixed(2),
           o.note || "",
-          o.completed ? "Erledigt" : "Offen"
+          o.completed ? "Erledigt" : "Offen", o.paid ? "Bezahlt" : "Unbezahlt"
         ]);
       });
     });
@@ -1153,6 +1172,8 @@
       return;
     }
 
+    const {data:allowed} = await db.rpc("is_portal_admin");
+    if(!allowed){await db.auth.signOut();$("login-error").textContent="Keine Adminberechtigung.";return;}
     showDashboard();
   });
 
@@ -1218,9 +1239,19 @@
       data: { session }
     } = await db.auth.getSession();
 
-    if (session) showDashboard();
+    if (session) { const {data} = await db.rpc("is_portal_admin"); if(data) showDashboard(); else await db.auth.signOut(); }
   }
 
+  function localDate(v){const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
+  function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;return (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed || f==="paid"&&o.paid || f==="unpaid"&&!o.paid);}
+  $("order-search").oninput=renderOrders; $("order-filter").onchange=renderOrders;
+  function beep(){try{const o=sound.createOscillator(),g=sound.createGain();o.connect(g);g.connect(sound.destination);g.gain.value=.08;o.frequency.value=660;o.start();o.stop(sound.currentTime+.2);}catch(e){}}
+  $("sound").onclick=async()=>{if(sound){await sound.close();sound=null;$("sound").textContent="Signalton aktivieren";}else{sound=new (window.AudioContext||window.webkitAudioContext)();await sound.resume();beep();$("sound").textContent="Signalton deaktivieren";}};
+  function bindExtras(){document.querySelectorAll("[data-paid]").forEach(b=>b.onchange=async()=>{if(orderAction||loadingOrders){b.checked=!b.checked;return;}orderAction=true;try{const {error}=await db.from("orders").update({paid:b.checked}).eq("id",b.dataset.paid).select("id").single();if(error){b.checked=!b.checked;message(error.message);}else{const o=orders.find(x=>x.id===b.dataset.paid);if(o)o.paid=b.checked;}}finally{orderAction=false;}});document.querySelectorAll("[data-print]").forEach(b=>b.onclick=()=>{const o=orders.find(x=>x.id===b.dataset.print);const w=window.open("","_blank");if(!w)return message("Bitte Pop-ups erlauben.");w.document.body.textContent="";const pre=w.document.createElement("pre");pre.textContent=[eventName(),o.teacher_name,o.place_type+": "+o.room,...o.order_items.map(i=>i.quantity+" × "+(i.product_name||i.products?.name)),o.note].join("\n");w.document.body.append(pre);w.print();});}
+  async function loadArchive(){const {data,error}=await db.from("event_archive").select("*").order("archived_at",{ascending:false});if(error)return message(error.message);$("archive-select").innerHTML='<option value="">Archiv auswählen</option>'+data.map(e=>`<option value="${e.event_key}">${esc(e.settings.title)} · ${esc(e.settings.event_date||"")}</option>`).join("");}
+  $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.paid?"Bezahlt":"Unbezahlt"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
+  $("archive-event").onclick=async()=>{if(!confirm("Aktuelle Veranstaltung archivieren? Die Bestellannahme wird geschlossen. Produkte und Restbestände bleiben erhalten."))return;const {error}=await db.rpc("archive_event");if(error)return message(error.message);seen=null;await loadEvent();await loadOrders();await loadArchive();};
+  $("qr-download").onclick=()=>{if(!window.QRCode)return message("QR-Bibliothek nicht geladen.");const a=document.createElement("a");a.href=$("qr").toDataURL();a.download="bestellportal-qr.png";a.click();};
   init();
 
 })();
