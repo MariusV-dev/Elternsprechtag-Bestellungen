@@ -48,7 +48,7 @@
     $("admin-message").textContent = s;
   }
 
-  // DASHBOARD UND AUTOMATISCHE AKTUALISIERUNG
+  // DASHBOARD
 
   function showDashboard() {
     loggedIn = true;
@@ -69,6 +69,8 @@
     ]);
   }
 
+  // AUTOMATISCHE AKTUALISIERUNG
+
   function addRefreshButton() {
     if ($("refresh-orders")) return;
 
@@ -83,8 +85,7 @@
     `;
 
     toolbar.innerHTML = `
-      <button
-        type="button"
+      <button type="button"
         id="refresh-orders"
         class="mini-btn">
         ↻ Aktualisieren
@@ -141,7 +142,7 @@
     }
   });
 
-  // PRODUKTE
+  // PRODUKTE LADEN
 
   async function loadProducts() {
     const { data, error } = await db
@@ -190,9 +191,11 @@
 
     $("admin-products")
       .querySelectorAll("[data-edit]")
-      .forEach(b => b.addEventListener("click", () =>
-        editProduct(b.dataset.edit)
-      ));
+      .forEach(button => {
+        button.addEventListener("click", () => {
+          editProduct(button.dataset.edit);
+        });
+      });
 
     $("admin-products")
       .querySelectorAll("[data-delete-product]")
@@ -248,8 +251,11 @@
     return true;
   }
 
+  // PRODUKTE BEARBEITEN
+
   function editProduct(id) {
     const p = products.find(x => x.id === id);
+
     if (!p) return;
 
     $("product-id").value = p.id;
@@ -295,8 +301,10 @@
     }
 
     resetProduct();
-    await loadProducts();
-    message("Produkt gespeichert.");
+
+    if (await loadProducts()) {
+      message("Produkt gespeichert.");
+    }
   });
 
   $("cancel-edit").addEventListener("click", resetProduct);
@@ -336,6 +344,7 @@
           "Bestellungen konnten nicht geladen werden: " +
           error.message
         );
+
         return false;
       }
 
@@ -361,14 +370,260 @@
     }
   }
 
+  // LIVE-PRODUKTÜBERSICHT
+
+  function renderProductSummary() {
+    let panel = $("product-summary");
+
+    if (!panel) {
+      panel = document.createElement("section");
+      panel.id = "product-summary";
+      $("orders-list").before(panel);
+    }
+
+    const summary = new Map();
+
+    let total = 0;
+    let open = 0;
+    let completed = 0;
+
+    orders.forEach(order => {
+      (order.order_items || []).forEach(item => {
+
+        const name =
+          item.product_name ||
+          item.products?.name ||
+          "Unbekanntes Produkt";
+
+        const quantity = Number(item.quantity) || 0;
+
+        if (!summary.has(name)) {
+          summary.set(name, {
+            name,
+            total: 0,
+            open: 0,
+            completed: 0
+          });
+        }
+
+        const product = summary.get(name);
+
+        product.total += quantity;
+        total += quantity;
+
+        if (order.completed) {
+          product.completed += quantity;
+          completed += quantity;
+        } else {
+          product.open += quantity;
+          open += quantity;
+        }
+      });
+    });
+
+    const items = [...summary.values()].sort(
+      (a, b) =>
+        b.open - a.open ||
+        a.name.localeCompare(b.name, "de")
+    );
+
+    const progress = total
+      ? Math.round(completed / total * 100)
+      : 0;
+
+    panel.style.cssText = `
+      border:1px solid #d1d5db;
+      border-radius:14px;
+      padding:18px;
+      margin:18px 0;
+    `;
+
+    panel.innerHTML = `
+      <h2 style="margin:0 0 5px;">
+        Produktübersicht
+      </h2>
+
+      <small style="opacity:0.7;">
+        Live-Zusammenfassung aller Bestellungen
+      </small>
+
+      <div style="
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:8px;
+        margin:18px 0;
+      ">
+
+        <div style="
+          background:#eff6ff;
+          color:#1d4ed8;
+          padding:12px 6px;
+          border-radius:10px;
+          text-align:center;
+        ">
+          <small>Gesamt</small>
+          <div style="font-size:28px;font-weight:bold;">
+            ${total}
+          </div>
+        </div>
+
+        <div style="
+          background:#fff7ed;
+          color:#c2410c;
+          padding:12px 6px;
+          border-radius:10px;
+          text-align:center;
+        ">
+          <small>Noch offen</small>
+          <div style="font-size:28px;font-weight:bold;">
+            ${open}
+          </div>
+        </div>
+
+        <div style="
+          background:#dcfce7;
+          color:#15803d;
+          padding:12px 6px;
+          border-radius:10px;
+          text-align:center;
+        ">
+          <small>Erledigt</small>
+          <div style="font-size:28px;font-weight:bold;">
+            ${completed}
+          </div>
+        </div>
+
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="
+          width:100%;
+          border-collapse:collapse;
+          font-size:14px;
+        ">
+          <thead>
+            <tr style="border-bottom:2px solid #d1d5db;">
+              <th style="text-align:left;padding:10px 4px;">
+                Produkt
+              </th>
+              <th style="text-align:center;padding:10px 4px;">
+                Gesamt
+              </th>
+              <th style="text-align:center;padding:10px 4px;">
+                Offen
+              </th>
+              <th style="text-align:center;padding:10px 4px;">
+                Fertig
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${items.map(p => `
+              <tr style="
+                border-bottom:1px solid #d1d5db;
+                ${p.open === 0
+                  ? "background:#dcfce7;color:#14532d;"
+                  : ""}
+              ">
+                <td style="padding:12px 4px;">
+                  <strong>${esc(p.name)}</strong>
+                </td>
+
+                <td style="text-align:center;">
+                  ${p.total}
+                </td>
+
+                <td style="
+                  text-align:center;
+                  color:#c2410c;
+                  font-weight:bold;
+                ">
+                  ${p.open}
+                </td>
+
+                <td style="
+                  text-align:center;
+                  color:#15803d;
+                  font-weight:bold;
+                ">
+                  ${p.completed}
+                </td>
+              </tr>
+            `).join("")}
+
+            ${items.length === 0 ? `
+              <tr>
+                <td colspan="4"
+                  style="padding:20px;text-align:center;">
+                  Noch keine Produkte bestellt.
+                </td>
+              </tr>
+            ` : ""}
+          </tbody>
+
+          ${items.length ? `
+            <tfoot>
+              <tr style="font-weight:bold;">
+                <td style="padding:12px 4px;">
+                  Summe
+                </td>
+                <td style="text-align:center;">
+                  ${total}
+                </td>
+                <td style="text-align:center;color:#c2410c;">
+                  ${open}
+                </td>
+                <td style="text-align:center;color:#15803d;">
+                  ${completed}
+                </td>
+              </tr>
+            </tfoot>
+          ` : ""}
+        </table>
+      </div>
+
+      <div style="margin-top:20px;">
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          margin-bottom:8px;
+        ">
+          <small>Bearbeitungsfortschritt</small>
+          <strong>${progress} %</strong>
+        </div>
+
+        <div style="
+          height:12px;
+          background:#e5e7eb;
+          border-radius:20px;
+          overflow:hidden;
+        ">
+          <div style="
+            width:${progress}%;
+            height:100%;
+            background:#16a34a;
+            border-radius:20px;
+            transition:width 0.3s;
+          "></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // EINZELNE BESTELLUNGEN ANZEIGEN
+
   function renderOrders() {
+
+    renderProductSummary();
+
     let total = 0;
     let count = 0;
 
     orders.forEach(o => {
       (o.order_items || []).forEach(i => {
-        total += Number(i.unit_price) * i.quantity;
-        count += i.quantity;
+        total += Number(i.unit_price) * Number(i.quantity);
+        count += Number(i.quantity);
       });
     });
 
@@ -516,6 +771,10 @@
                 : "Bestellung wieder geöffnet."
             );
 
+          } catch (error) {
+            box.checked = !completed;
+            message("Status konnte nicht gespeichert werden.");
+
           } finally {
             orderAction = false;
             box.disabled = false;
@@ -561,6 +820,7 @@
                 "Bestellung konnte nicht gelöscht werden: " +
                 (error?.message || "Unbekannter Fehler")
               );
+
               return;
             }
 
@@ -569,6 +829,9 @@
             if (loggedIn) renderOrders();
 
             message("Bestellung wurde endgültig gelöscht.");
+
+          } catch (error) {
+            message("Bestellung konnte nicht gelöscht werden.");
 
           } finally {
             orderAction = false;
@@ -579,7 +842,7 @@
       });
   }
 
-  // VERANSTALTUNG DAUERHAFT SPEICHERN
+  // VERANSTALTUNGSTERMIN
 
   function showSavedEvent() {
     if (!savedEvent) return;
@@ -610,7 +873,6 @@
       status.id = "saved-event-status";
 
       status.style.cssText = `
-        color:#15803d;
         font-size:13px;
         margin-top:10px;
       `;
@@ -619,18 +881,23 @@
     }
 
     if (savedEvent?.event_date) {
+
       const date = new Date(
         savedEvent.event_date + "T12:00:00"
       ).toLocaleDateString("de-DE");
 
+      status.style.color = "#15803d";
+
       status.textContent =
         "✓ Gespeicherter Termin: " +
         date + " · " +
-        savedEvent.start_time.slice(0, 5) +
+        (savedEvent.start_time || "18:00").slice(0, 5) +
         " – " +
-        savedEvent.end_time.slice(0, 5) +
+        (savedEvent.end_time || "20:00").slice(0, 5) +
         " Uhr";
+
     } else {
+      status.style.color = "#64748b";
       status.textContent = "Noch kein Termin gespeichert.";
     }
   }
@@ -645,10 +912,12 @@
     if (!loggedIn) return;
 
     if (error) {
-      return message(
+      message(
         "Termin konnte nicht geladen werden: " +
         error.message
       );
+
+      return;
     }
 
     savedEvent = data || null;
@@ -656,6 +925,8 @@
     showSavedEvent();
     showEventStatus();
   }
+
+  // TERMIN SPEICHERN
 
   $("event-form").addEventListener("submit", async ev => {
     ev.preventDefault();
@@ -706,13 +977,15 @@
         "Veranstaltungstermin dauerhaft gespeichert."
       );
 
+    } catch (error) {
+      message("Termin konnte nicht gespeichert werden.");
+
     } finally {
       if (submitButton) submitButton.disabled = false;
     }
   });
 
   // KALENDER-EXPORT
-  // Verwendet ausschließlich den gespeicherten Termin.
 
   $("download-ics").addEventListener("click", () => {
 
@@ -824,6 +1097,8 @@
     );
   });
 
+  // DATEIEN HERUNTERLADEN
+
   function downloadFile(content, filename, type) {
     const a = document.createElement("a");
 
@@ -844,6 +1119,12 @@
 
     ev.preventDefault();
     $("login-error").textContent = "";
+
+    if (!db) {
+      $("login-error").textContent =
+        "Supabase ist nicht konfiguriert.";
+      return;
+    }
 
     const { error } = await db.auth.signInWithPassword({
       email: $("email").value,
@@ -882,7 +1163,20 @@
     $("orders-list").innerHTML = "";
     $("admin-products").innerHTML = "";
 
+    if ($("product-summary")) {
+      $("product-summary").remove();
+    }
+
+    if ($("saved-event-status")) {
+      $("saved-event-status").remove();
+    }
+
+    $("stat-orders").textContent = "0";
+    $("stat-items").textContent = "0";
+    $("stat-total").textContent = money(0);
+
     $("event-form").reset();
+    $("login-form").reset();
 
     $("dashboard").classList.add("hidden");
     $("login-panel").classList.remove("hidden");
