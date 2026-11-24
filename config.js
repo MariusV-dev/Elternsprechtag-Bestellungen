@@ -4,6 +4,6 @@
   in eine GitHub-Pages-Website eintragen.
 */
 window.APP_CONFIG = {
-  SUPABASE_URL: "https://DEIN-PROJEKT.supabase.co",
-  SUPABASE_ANON_KEY: "DEIN_PUBLIC_ANON_KEY"
+  supabaseUrl: "https://sjvwcjjeqqgpdittkxnm.supabase.co",
+  supabaseAnonKey: "sb_publishable_DUhCe-9zp3cmvDvlM2DVeQ_81wjJsBw"
 };
