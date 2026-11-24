@@ -844,11 +844,27 @@
 
   // VERANSTALTUNGSTERMIN
 
+  function eventName() {
+    return savedEvent?.title?.trim() || "Veranstaltung";
+  }
+
+  function updateEventHeading() {
+    $("admin-event-brand").textContent = "Verwaltung · " + eventName();
+    $("admin-event-heading").textContent = eventName() + " verwalten";
+    document.title = "Administration · " + eventName();
+  }
+
+  function eventFilename() {
+    return eventName().normalize("NFC").replace(/[^\p{L}\p{N}_-]+/gu, "-")
+      .replace(/^-+|-+$/g, "").slice(0, 100) || "veranstaltung";
+  }
+
   function showSavedEvent() {
+    updateEventHeading();
     if (!savedEvent) return;
 
     $("event-title").value =
-      savedEvent.title || "Elternabend";
+      savedEvent.title || "Veranstaltung";
 
     $("event-date").value =
       savedEvent.event_date || "";
@@ -933,7 +949,7 @@
 
     const row = {
       id: 1,
-      title: $("event-title").value.trim() || "Elternabend",
+      title: $("event-title").value.trim() || "Veranstaltung",
       event_date: $("event-date").value,
       start_time: $("event-start").value || "18:00",
       end_time: $("event-end").value || "20:00",
@@ -1015,22 +1031,22 @@
     const ics = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//Elternabend//DE",
+      "PRODID:-//Eichendorff Bestellportal//DE",
       "CALSCALE:GREGORIAN",
       "BEGIN:VEVENT",
-      "UID:elternabend-veranstaltung@school.local",
+      `UID:veranstaltung-${date}@school.local`,
       `DTSTAMP:${new Date().toISOString()
         .replace(/[-:]/g, "")
         .replace(/\.\d{3}/, "")}`,
       `DTSTART:${compact(date, start)}`,
       `DTEND:${compact(date, end)}`,
-      `SUMMARY:${escapeICS(savedEvent.title || "Elternabend")}`,
+      `SUMMARY:${escapeICS(savedEvent.title || "Veranstaltung")}`,
       `LOCATION:${escapeICS(savedEvent.location)}`,
-      "DESCRIPTION:Erinnerung zum Elternabend",
+      `DESCRIPTION:${escapeICS("Erinnerung: " + eventName())}`,
       "BEGIN:VALARM",
       "TRIGGER:-PT1H",
       "ACTION:DISPLAY",
-      "DESCRIPTION:Elternabend in einer Stunde",
+      `DESCRIPTION:${escapeICS(eventName() + " in einer Stunde")}`,
       "END:VALARM",
       "END:VEVENT",
       "END:VCALENDAR",
@@ -1039,7 +1055,7 @@
 
     downloadFile(
       ics,
-      "elternabend.ics",
+      eventFilename() + ".ics",
       "text/calendar;charset=utf-8"
     );
 
@@ -1092,7 +1108,7 @@
 
     downloadFile(
       "\ufeff" + csv,
-      "elternabend-bestellungen.csv",
+      eventFilename() + "-bestellungen.csv",
       "text/csv;charset=utf-8"
     );
   });
@@ -1159,6 +1175,7 @@
     orders = [];
     products = [];
     savedEvent = null;
+    updateEventHeading();
 
     $("orders-list").innerHTML = "";
     $("admin-products").innerHTML = "";

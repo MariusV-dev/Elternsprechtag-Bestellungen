@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#17365d">
-  <title>Bestellung zum Elternabend</title>
+  <title>Bestellportal</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
@@ -14,7 +14,7 @@
   <header class="site-header">
     <a class="brand" href="./" aria-label="Startseite">
       <span class="brand-mark">E</span>
-      <span><strong>Eichendorff</strong><small>Elternabend · Verpflegung</small></span>
+      <span><strong>Eichendorff</strong><small id="event-brand">Verpflegung</small></span>
     </a>
     <a class="admin-link" href="admin.html">Administration <span aria-hidden="true">↗</span></a>
   </header>
@@ -22,8 +22,8 @@
   <main class="main-wrap">
     <section class="hero">
       <div class="eyebrow">SCHULVERANSTALTUNG</div>
-      <h1>Bestellung für den<br><em>Elternabend</em></h1>
-      <p class="hero-copy">Hier kannst du deine Getränke und Snacks für den Elternabend vorbestellen. Wähle einfach deine gewünschten Artikel aus und sende deine Bestellung ab.</p>
+      <h1>Bestellung für:<br><em id="event-name">Schulveranstaltung</em></h1>
+      <p class="hero-copy">Hier kannst du deine Getränke und Snacks für die Veranstaltung vorbestellen. Wähle einfach deine gewünschten Artikel aus und sende deine Bestellung ab.</p>
       <div class="event-strip">
         <span class="event-icon">▦</span>
         <span><small>VERANSTALTUNG</small><strong id="event-date-label">Termin wird bekannt gegeben</strong></span>
@@ -52,7 +52,7 @@
           <label for="teacher-note">Anmerkung <span class="muted">(optional)</span></label>
           <textarea id="teacher-note" name="teacher-note" rows="2" maxlength="500" placeholder="z. B. Besonderheiten"></textarea>
           <button class="primary-btn" type="submit" id="submit-order" disabled>Bestellung absenden <span>→</span></button>
-          <p class="fine-print">Deine Bestellung wird für die Organisation des Elternabends gespeichert.</p>
+          <p class="fine-print">Deine Bestellung wird für die Organisation der Veranstaltung gespeichert.</p>
         </form>
       </aside>
     </section>
@@ -63,6 +63,6 @@
     </section>
   </main>
 
-  <footer><span>Eichendorff · Elternabend</span><span>Bestellportal</span></footer>
+  <footer><span id="event-footer">Eichendorff · Bestellportal</span><span>Bestellportal</span></footer>
 </body>
 </html>

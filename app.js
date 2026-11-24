@@ -45,6 +45,12 @@
       db.from("products").select("id,name,category,price,active").eq("active",true).order("category").order("name"),
       db.from("event_settings").select("*").eq("id",1).maybeSingle()
     ]);
+    const eventName = !ee && e?.title?.trim() || "Schulveranstaltung";
+    $("event-name").textContent = eventName;
+    $("event-brand").textContent = eventName + " · Verpflegung";
+    $("event-footer").textContent = "Eichendorff · " + eventName;
+    document.title = eventName + " – Bestellung";
+    if (ee) console.warn("Veranstaltung konnte nicht geladen werden:", ee.message);
     if(pe) { $("product-groups").innerHTML=`<div class="setup-message">Produkte konnten nicht geladen werden: ${escapeHtml(pe.message)}</div>`; return; }
     products = p||[]; eventInfo=e;
     $("event-date-label").textContent = e?.event_date ? new Intl.DateTimeFormat("de-DE",{dateStyle:"full"}).format(new Date(e.event_date+"T12:00:00")) : "Termin wird bekannt gegeben";

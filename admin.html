@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#17365d">
-  <title>Administration · Elternabend</title>
+  <title>Administration · Bestellportal</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
@@ -12,7 +12,7 @@
 </head>
 <body class="admin-body">
   <header class="site-header">
-    <a class="brand" href="./"><span class="brand-mark">E</span><span><strong>Eichendorff</strong><small>Verwaltung · Elternabend</small></span></a>
+    <a class="brand" href="./"><span class="brand-mark">E</span><span><strong>Eichendorff</strong><small id="admin-event-brand">Veranstaltungsverwaltung</small></span></a>
     <a class="admin-link" href="./">Zum Bestellportal ↗</a>
   </header>
   <main class="admin-wrap">
@@ -28,7 +28,7 @@
     </section>
 
     <section id="dashboard" class="hidden">
-      <div class="admin-title-row"><div><div class="eyebrow">ÜBERSICHT</div><h1>Elternabend verwalten</h1><p class="muted">Bestellungen, Produkte und Veranstaltungstermin an einem Ort.</p></div><button class="outline-btn" id="logout">Abmelden</button></div>
+      <div class="admin-title-row"><div><div class="eyebrow">ÜBERSICHT</div><h1 id="admin-event-heading">Veranstaltung verwalten</h1><p class="muted">Bestellungen, Produkte und Veranstaltungstermin an einem Ort.</p></div><button class="outline-btn" id="logout">Abmelden</button></div>
       <div class="stats-grid">
         <article class="stat-card"><span>Bestellungen</span><strong id="stat-orders">–</strong></article>
         <article class="stat-card"><span>Bestellte Artikel</span><strong id="stat-items">–</strong></article>
@@ -39,7 +39,7 @@
         <section class="panel">
           <div class="panel-heading"><div><div class="eyebrow">VERANSTALTUNG</div><h2>Termin & Kalender</h2></div></div>
           <form id="event-form" class="stack-form">
-            <label for="event-title">Bezeichnung</label><input id="event-title" maxlength="120" value="Elternabend">
+            <label for="event-title">Bezeichnung</label><input id="event-title" maxlength="120" placeholder="z. B. Schulfest" required>
             <label for="event-date">Datum</label><input id="event-date" type="date" required>
             <label for="event-start">Beginn</label><input id="event-start" type="time" value="18:00" required>
             <label for="event-end">Ende</label><input id="event-end" type="time" value="20:00" required>
