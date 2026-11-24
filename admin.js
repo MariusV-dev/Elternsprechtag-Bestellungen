@@ -14,7 +14,14 @@
     currency: "EUR"
   }).format(Number(n) || 0);
 
-  let db, orders = [], products = [];
+  let db;
+  let orders = [];
+  let products = [];
+  let savedEvent = null;
+  let refreshTimer = null;
+  let loadingOrders = false;
+  let orderAction = false;
+  let loggedIn = false;
 
   const esc = s => String(s ?? "").replace(
     /[&<>"']/g,
@@ -41,10 +48,17 @@
     $("admin-message").textContent = s;
   }
 
+  // DASHBOARD UND AUTOMATISCHE AKTUALISIERUNG
+
   function showDashboard() {
+    loggedIn = true;
+
     $("login-panel").classList.add("hidden");
     $("dashboard").classList.remove("hidden");
+
+    addRefreshButton();
     loadAll();
+    startAutoRefresh();
   }
 
   async function loadAll() {
@@ -55,7 +69,79 @@
     ]);
   }
 
-  // PRODUKTE LADEN
+  function addRefreshButton() {
+    if ($("refresh-orders")) return;
+
+    const toolbar = document.createElement("div");
+
+    toolbar.style.cssText = `
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin:12px 0;
+    `;
+
+    toolbar.innerHTML = `
+      <button
+        type="button"
+        id="refresh-orders"
+        class="mini-btn">
+        ↻ Aktualisieren
+      </button>
+
+      <small id="refresh-status"
+        style="color:#64748b;">
+        Automatische Aktualisierung alle 10 Sekunden
+      </small>
+    `;
+
+    $("orders-list").before(toolbar);
+
+    $("refresh-orders").addEventListener("click", async () => {
+      const button = $("refresh-orders");
+
+      button.disabled = true;
+      button.textContent = "Wird aktualisiert …";
+
+      try {
+        await loadOrders();
+      } finally {
+        button.disabled = false;
+        button.textContent = "↻ Aktualisieren";
+      }
+    });
+  }
+
+  function startAutoRefresh() {
+    stopAutoRefresh();
+
+    refreshTimer = setInterval(() => {
+      if (
+        loggedIn &&
+        !document.hidden &&
+        !loadingOrders &&
+        !orderAction
+      ) {
+        loadOrders();
+      }
+    }, 10000);
+  }
+
+  function stopAutoRefresh() {
+    if (refreshTimer !== null) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && loggedIn) {
+      loadOrders();
+    }
+  });
+
+  // PRODUKTE
 
   async function loadProducts() {
     const { data, error } = await db
@@ -63,6 +149,8 @@
       .select("*")
       .order("category")
       .order("name");
+
+    if (!loggedIn) return false;
 
     if (error) {
       message(error.message);
@@ -106,8 +194,6 @@
         editProduct(b.dataset.edit)
       ));
 
-    // PRODUKTE LÖSCHEN
-
     $("admin-products")
       .querySelectorAll("[data-delete-product]")
       .forEach(button => {
@@ -120,13 +206,11 @@
 
           if (!product) return;
 
-          const confirmed = confirm(
+          if (!confirm(
             'Produkt "' + product.name +
             '" wirklich endgültig löschen?\n\n' +
             "Bestehende Bestellungen bleiben erhalten."
-          );
-
-          if (!confirmed) return;
+          )) return;
 
           button.disabled = true;
           button.textContent = "Wird gelöscht …";
@@ -154,27 +238,15 @@
             resetProduct();
           }
 
-          const results = await Promise.all([
-            loadProducts(),
-            loadOrders()
-          ]);
+          await loadProducts();
+          await loadOrders();
 
-          if (results.every(Boolean)) {
-            message("Produkt wurde endgültig gelöscht.");
-          } else {
-            message(
-              "Produkt gelöscht. Bitte Seite neu laden."
-            );
-          }
-
+          message("Produkt wurde gelöscht.");
         });
-
       });
 
     return true;
   }
-
-  // PRODUKTE BEARBEITEN
 
   function editProduct(id) {
     const p = products.find(x => x.id === id);
@@ -223,45 +295,73 @@
     }
 
     resetProduct();
-
-    if (await loadProducts()) {
-      message("Produkt gespeichert.");
-    }
+    await loadProducts();
+    message("Produkt gespeichert.");
   });
 
   $("cancel-edit").addEventListener("click", resetProduct);
 
-  // BESTELLUNGEN
+  // BESTELLUNGEN LADEN
 
   async function loadOrders() {
-    const { data, error } = await db
-      .from("orders")
-      .select(`
-        id,
-        teacher_name,
-        room,
-        completed,
-        note,
-        created_at,
-        order_items(
-          quantity,
-          unit_price,
-          product_name,
-          products(name,category)
-        )
-      `)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      message(
-        "Bestellungen konnten nicht geladen werden: " +
-        error.message
-      );
+    if (!loggedIn || loadingOrders || orderAction) {
       return false;
     }
 
-    orders = data || [];
+    loadingOrders = true;
 
+    try {
+      const { data, error } = await db
+        .from("orders")
+        .select(`
+          id,
+          teacher_name,
+          room,
+          completed,
+          note,
+          created_at,
+          order_items(
+            quantity,
+            unit_price,
+            product_name,
+            products(name,category)
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!loggedIn) return false;
+
+      if (error) {
+        message(
+          "Bestellungen konnten nicht geladen werden: " +
+          error.message
+        );
+        return false;
+      }
+
+      orders = data || [];
+
+      renderOrders();
+
+      if ($("refresh-status")) {
+        $("refresh-status").textContent =
+          "Zuletzt aktualisiert: " +
+          new Date().toLocaleTimeString("de-DE") +
+          " · Automatisch alle 10 Sekunden";
+      }
+
+      return true;
+
+    } catch (error) {
+      message("Aktualisierung fehlgeschlagen.");
+      return false;
+
+    } finally {
+      loadingOrders = false;
+    }
+  }
+
+  function renderOrders() {
     let total = 0;
     let count = 0;
 
@@ -352,15 +452,20 @@
                 style="${deleteStyle}margin-top:8px;">
                 Löschen
               </button>
-
             </div>
+
           </article>
         `;
 
       }).join("")
       : '<p class="muted">Noch keine Bestellungen vorhanden.</p>';
 
-    // ERLEDIGT-STATUS SPEICHERN
+    bindOrderActions();
+  }
+
+  // BESTELLUNGEN ABHAKEN UND LÖSCHEN
+
+  function bindOrderActions() {
 
     $("orders-list")
       .querySelectorAll("[data-complete]")
@@ -369,44 +474,54 @@
         box.addEventListener("change", async () => {
 
           const completed = box.checked;
-          box.disabled = true;
 
-          const { data, error } = await db
-            .from("orders")
-            .update({ completed })
-            .eq("id", box.dataset.complete)
-            .select("id")
-            .single();
-
-          if (error || !data) {
+          if (orderAction || loadingOrders) {
             box.checked = !completed;
-            box.disabled = false;
-
-            message(
-              "Status konnte nicht gespeichert werden: " +
-              (error?.message || "Unbekannter Fehler")
-            );
-
             return;
           }
 
-          const refreshed = await loadOrders();
+          orderAction = true;
+          box.disabled = true;
 
-          if (refreshed) {
+          try {
+            const { data, error } = await db
+              .from("orders")
+              .update({ completed })
+              .eq("id", box.dataset.complete)
+              .select("id")
+              .single();
+
+            if (error || !data) {
+              box.checked = !completed;
+
+              message(
+                "Status konnte nicht gespeichert werden: " +
+                (error?.message || "Unbekannter Fehler")
+              );
+
+              return;
+            }
+
+            const order = orders.find(
+              o => o.id === box.dataset.complete
+            );
+
+            if (order) order.completed = completed;
+
+            if (loggedIn) renderOrders();
+
             message(
               completed
                 ? "Bestellung als erledigt markiert."
                 : "Bestellung wieder geöffnet."
             );
-          } else {
+
+          } finally {
+            orderAction = false;
             box.disabled = false;
           }
-
         });
-
       });
-
-    // BESTELLUNGEN LÖSCHEN
 
     $("orders-list")
       .querySelectorAll("[data-delete]")
@@ -414,64 +529,111 @@
 
         button.addEventListener("click", async () => {
 
+          if (orderAction || loadingOrders) return;
+
           const order = orders.find(
             o => o.id === button.dataset.delete
           );
 
           if (!order) return;
 
-          const confirmed = confirm(
+          if (!confirm(
             "Bestellung von " + order.teacher_name +
             " (Raum: " + (order.room || "Nicht angegeben") +
             ") wirklich endgültig löschen?\n\n" +
             "Diese Aktion kann nicht rückgängig gemacht werden."
-          );
+          )) return;
 
-          if (!confirmed) return;
-
+          orderAction = true;
           button.disabled = true;
           button.textContent = "Wird gelöscht …";
 
-          const { data, error } = await db
-            .from("orders")
-            .delete()
-            .eq("id", order.id)
-            .select("id")
-            .single();
+          try {
+            const { data, error } = await db
+              .from("orders")
+              .delete()
+              .eq("id", order.id)
+              .select("id")
+              .single();
 
-          if (error || !data) {
+            if (error || !data) {
+              message(
+                "Bestellung konnte nicht gelöscht werden: " +
+                (error?.message || "Unbekannter Fehler")
+              );
+              return;
+            }
+
+            orders = orders.filter(o => o.id !== order.id);
+
+            if (loggedIn) renderOrders();
+
+            message("Bestellung wurde endgültig gelöscht.");
+
+          } finally {
+            orderAction = false;
             button.disabled = false;
             button.textContent = "Löschen";
-
-            message(
-              "Bestellung konnte nicht gelöscht werden: " +
-              (error?.message || "Unbekannter Fehler")
-            );
-
-            return;
           }
-
-          orders = orders.filter(o => o.id !== order.id);
-          button.closest(".order-row")?.remove();
-
-          const refreshed = await loadOrders();
-
-          if (refreshed) {
-            message("Bestellung wurde endgültig gelöscht.");
-          } else {
-            message(
-              "Bestellung gelöscht. Bitte Seite neu laden."
-            );
-          }
-
         });
-
       });
-
-    return true;
   }
 
-  // VERANSTALTUNG
+  // VERANSTALTUNG DAUERHAFT SPEICHERN
+
+  function showSavedEvent() {
+    if (!savedEvent) return;
+
+    $("event-title").value =
+      savedEvent.title || "Elternabend";
+
+    $("event-date").value =
+      savedEvent.event_date || "";
+
+    $("event-start").value =
+      (savedEvent.start_time || "18:00").slice(0, 5);
+
+    $("event-end").value =
+      (savedEvent.end_time || "20:00").slice(0, 5);
+
+    $("event-location").value =
+      savedEvent.location || "";
+
+    showEventStatus();
+  }
+
+  function showEventStatus() {
+    let status = $("saved-event-status");
+
+    if (!status) {
+      status = document.createElement("p");
+      status.id = "saved-event-status";
+
+      status.style.cssText = `
+        color:#15803d;
+        font-size:13px;
+        margin-top:10px;
+      `;
+
+      $("event-form").after(status);
+    }
+
+    if (savedEvent?.event_date) {
+      const date = new Date(
+        savedEvent.event_date + "T12:00:00"
+      ).toLocaleDateString("de-DE");
+
+      status.textContent =
+        "✓ Gespeicherter Termin: " +
+        date + " · " +
+        savedEvent.start_time.slice(0, 5) +
+        " – " +
+        savedEvent.end_time.slice(0, 5) +
+        " Uhr";
+    } else {
+      status.textContent = "Noch kein Termin gespeichert.";
+    }
+  }
 
   async function loadEvent() {
     const { data, error } = await db
@@ -480,15 +642,19 @@
       .eq("id", 1)
       .maybeSingle();
 
-    if (error) return message(error.message);
+    if (!loggedIn) return;
 
-    if (data) {
-      $("event-title").value = data.title || "Elternabend";
-      $("event-date").value = data.event_date || "";
-      $("event-start").value = data.start_time || "18:00";
-      $("event-end").value = data.end_time || "20:00";
-      $("event-location").value = data.location || "";
+    if (error) {
+      return message(
+        "Termin konnte nicht geladen werden: " +
+        error.message
+      );
     }
+
+    savedEvent = data || null;
+
+    showSavedEvent();
+    showEventStatus();
   }
 
   $("event-form").addEventListener("submit", async ev => {
@@ -496,41 +662,69 @@
 
     const row = {
       id: 1,
-      title: $("event-title").value.trim(),
+      title: $("event-title").value.trim() || "Elternabend",
       event_date: $("event-date").value,
-      start_time: $("event-start").value,
-      end_time: $("event-end").value,
+      start_time: $("event-start").value || "18:00",
+      end_time: $("event-end").value || "20:00",
       location: $("event-location").value.trim()
     };
 
-    const { error } = await db
-      .from("event_settings")
-      .upsert(row);
+    if (!row.event_date) {
+      return message("Bitte ein Veranstaltungsdatum auswählen.");
+    }
 
-    if (error) {
+    if (row.end_time <= row.start_time) {
       return message(
-        "Termin konnte nicht gespeichert werden: " +
-        error.message
+        "Die Endzeit muss nach der Startzeit liegen."
       );
     }
 
-    message("Veranstaltungstermin gespeichert.");
+    const submitButton =
+      $("event-form").querySelector('[type="submit"]');
+
+    if (submitButton) submitButton.disabled = true;
+
+    try {
+      const { data, error } = await db
+        .from("event_settings")
+        .upsert(row, { onConflict: "id" })
+        .select("*")
+        .single();
+
+      if (error || !data) {
+        return message(
+          "Termin konnte nicht gespeichert werden: " +
+          (error?.message || "Unbekannter Fehler")
+        );
+      }
+
+      savedEvent = data;
+
+      showSavedEvent();
+
+      message(
+        "Veranstaltungstermin dauerhaft gespeichert."
+      );
+
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
 
   // KALENDER-EXPORT
+  // Verwendet ausschließlich den gespeicherten Termin.
 
   $("download-ics").addEventListener("click", () => {
 
-    const date = $("event-date").value;
-
-    if (!date) {
+    if (!savedEvent?.event_date) {
       return message(
-        "Bitte zuerst ein Veranstaltungsdatum speichern."
+        "Bitte zuerst einen Veranstaltungstermin speichern."
       );
     }
 
-    const start = $("event-start").value || "18:00";
-    const end = $("event-end").value || "20:00";
+    const date = savedEvent.event_date;
+    const start = savedEvent.start_time || "18:00";
+    const end = savedEvent.end_time || "20:00";
 
     const compact = (d, t) =>
       d.replaceAll("-", "") +
@@ -538,20 +732,27 @@
       t.slice(0, 5).replace(":", "") +
       "00";
 
+    const escapeICS = value =>
+      String(value || "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\r\n|\r|\n/g, "\\n")
+        .replace(/;/g, "\\;")
+        .replace(/,/g, "\\,");
+
     const ics = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       "PRODID:-//Elternabend//DE",
       "CALSCALE:GREGORIAN",
       "BEGIN:VEVENT",
-      `UID:elternabend-${date}@school.local`,
+      "UID:elternabend-veranstaltung@school.local",
       `DTSTAMP:${new Date().toISOString()
         .replace(/[-:]/g, "")
         .replace(/\.\d{3}/, "")}`,
       `DTSTART:${compact(date, start)}`,
       `DTEND:${compact(date, end)}`,
-      `SUMMARY:${$("event-title").value || "Elternabend"}`,
-      `LOCATION:${$("event-location").value || ""}`,
+      `SUMMARY:${escapeICS(savedEvent.title || "Elternabend")}`,
+      `LOCATION:${escapeICS(savedEvent.location)}`,
       "DESCRIPTION:Erinnerung zum Elternabend",
       "BEGIN:VALARM",
       "TRIGGER:-PT1H",
@@ -559,20 +760,17 @@
       "DESCRIPTION:Elternabend in einer Stunde",
       "END:VALARM",
       "END:VEVENT",
-      "END:VCALENDAR"
+      "END:VCALENDAR",
+      ""
     ].join("\r\n");
 
-    const a = document.createElement("a");
-
-    a.href = URL.createObjectURL(
-      new Blob([ics], {
-        type: "text/calendar;charset=utf-8"
-      })
+    downloadFile(
+      ics,
+      "elternabend.ics",
+      "text/calendar;charset=utf-8"
     );
 
-    a.download = "elternabend.ics";
-    a.click();
-    URL.revokeObjectURL(a.href);
+    message("Gespeicherter Termin als Kalenderdatei exportiert.");
   });
 
   // CSV-EXPORT
@@ -603,7 +801,6 @@
           o.note || "",
           o.completed ? "Erledigt" : "Offen"
         ]);
-
       });
     });
 
@@ -620,18 +817,26 @@
       }).join(";")
     ).join("\r\n");
 
+    downloadFile(
+      "\ufeff" + csv,
+      "elternabend-bestellungen.csv",
+      "text/csv;charset=utf-8"
+    );
+  });
+
+  function downloadFile(content, filename, type) {
     const a = document.createElement("a");
 
-    a.href = URL.createObjectURL(
-      new Blob(["\ufeff" + csv], {
-        type: "text/csv;charset=utf-8"
-      })
+    const url = URL.createObjectURL(
+      new Blob([content], { type })
     );
 
-    a.download = "elternabend-bestellungen.csv";
+    a.href = url;
+    a.download = filename;
     a.click();
-    URL.revokeObjectURL(a.href);
-  });
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   // ADMIN-LOGIN
 
@@ -658,13 +863,26 @@
 
   $("logout").addEventListener("click", async () => {
 
-    await db.auth.signOut();
+    loggedIn = false;
+    stopAutoRefresh();
+
+    const { error } = await db.auth.signOut();
+
+    if (error) {
+      loggedIn = true;
+      startAutoRefresh();
+      message("Abmeldung fehlgeschlagen.");
+      return;
+    }
 
     orders = [];
     products = [];
+    savedEvent = null;
 
     $("orders-list").innerHTML = "";
     $("admin-products").innerHTML = "";
+
+    $("event-form").reset();
 
     $("dashboard").classList.add("hidden");
     $("login-panel").classList.remove("hidden");
