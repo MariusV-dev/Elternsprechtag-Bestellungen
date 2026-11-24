@@ -40,7 +40,7 @@
   }
   function escapeHtml(s) { return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   async function init() {
-    if(!configured || !window.supabase) return showSetupError();
+    if(!configured || !window.supabase) { updateStatus(); return showSetupError(); }
     db = window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
     const [{data:p,error:pe},{data:e,error:ee}] = await Promise.all([
       db.from("products").select("id,name,category,price,active,stock,image_path").eq("active",true).order("category").order("name"),
@@ -52,6 +52,7 @@
     $("event-footer").textContent = "Eichendorff · " + eventName;
     document.title = eventName + " – Bestellung";
     if (ee) console.warn("Veranstaltung konnte nicht geladen werden:", ee.message);
+    eventInfo=ee?null:e; updateStatus();
     if(pe) { $("product-groups").innerHTML=`<div class="setup-message">Produkte konnten nicht geladen werden: ${escapeHtml(pe.message)}</div>`; return; }
     products = p||[]; eventInfo=ee?null:e;
     updateStatus(); lastOpen=isOpen();
@@ -104,11 +105,11 @@
   function updateStatus(){
     const el=$("order-status"); let title, detail, state;
     if(!eventInfo){title="Bestellstatus nicht verfügbar";detail="Bitte lade die Seite erneut.";state="closed";}
-    else if(!eventInfo.accepting){title="Bestellannahme geschlossen";detail="Aktuell sind keine Bestellungen möglich.";state="closed";}
+    else if(!eventInfo.accepting){title="Bestellungen nicht möglich";detail="Aktuell sind keine Bestellungen möglich.";state="closed";}
     else if(eventInfo.deadline && Date.now()>=Date.parse(eventInfo.deadline)){title="Bestellannahme beendet";detail="Bestellschluss: "+formatTime(eventInfo.deadline)+" Uhr";state="closed";}
-    else if(eventInfo.opens_at && Date.now()<Date.parse(eventInfo.opens_at)){title="Bestellungen bald möglich";detail="Ab "+formatTime(eventInfo.opens_at)+" Uhr";state="waiting";}
-    else {title="Bestellungen möglich";detail=eventInfo.deadline?"Bis "+formatTime(eventInfo.deadline)+" Uhr":"Du kannst jetzt bestellen.";state="open";}
-    const key=title+detail;if(el.dataset.key!==key){el.dataset.key=key;el.dataset.state=state;el.replaceChildren(Object.assign(document.createElement("strong"),{textContent:title}),Object.assign(document.createElement("span"),{textContent:detail}));}
+    else if(eventInfo.opens_at && Date.now()<Date.parse(eventInfo.opens_at)){title="Noch nicht geöffnet";detail="Ab "+formatTime(eventInfo.opens_at)+" Uhr";state="waiting";}
+    else {title="Du kannst jetzt bestellen!";detail=eventInfo.deadline?"Bis "+formatTime(eventInfo.deadline)+" Uhr":"Du kannst jetzt bestellen.";state="open";}
+    const key=title+detail;if(el.dataset.key!==key){el.dataset.key=key;el.dataset.state=state;const icon=document.createElement("span"); icon.className="status-icon"; icon.setAttribute("aria-hidden","true"); icon.textContent=({open:"✓",waiting:"◷",closed:"×"})[state]; const copy=document.createElement("div"); copy.className="status-copy"; const label=document.createElement("small"); label.textContent=({open:"Bestellannahme geöffnet",waiting:"Bestellannahme startet bald",closed:"Bestellannahme geschlossen"})[state]; copy.append(label,Object.assign(document.createElement("strong"),{textContent:title}),Object.assign(document.createElement("span"),{textContent:detail})); el.replaceChildren(icon,copy);}
   }
   let lastOpen=false;
   setInterval(()=>{if(!eventInfo)return;updateStatus();const open=isOpen();if(open!==lastOpen){lastOpen=open;renderCart();}},1000);
