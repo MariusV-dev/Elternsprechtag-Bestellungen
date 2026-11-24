@@ -6,10 +6,10 @@
   <meta name="theme-color" content="#17365d">
   <title>Administration · Bestellportal</title>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="responsive.css">
+  <link rel="stylesheet" href="responsive.css?v=20261125-2">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js"></script>
+  <script defer src="admin.js?v=20261125-2"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -36,9 +36,9 @@
         <article class="stat-card"><span>Voraussichtlicher Gesamtwert</span><strong id="stat-total">–</strong></article>
       </div>
 
-      <section class="panel orders-panel">
+      <section class="panel payment-overview" aria-label="Zahlungsübersicht"><div class="summary-heading"><h2>Zahlungsübersicht</h2><strong id="payment-count">–</strong></div><div class="payment-grid"><div><span>Bereits bezahlt</span><strong id="stat-paid">–</strong></div><div><span>Noch zu bezahlen</span><strong id="stat-unpaid">–</strong></div></div><progress id="payment-progress" max="100" value="0" aria-label="Anteil bezahlter Bestellwerte"></progress><p class="muted" id="payment-caption"></p></section><section class="panel orders-panel">
         <div class="panel-heading"><div><div class="eyebrow">EINGÄNGE</div><h2>Bestellungen</h2></div><button class="outline-btn" id="export-csv">CSV exportieren</button></div>
-        <div class="extra-tools"><input type="search" aria-label="Bestellungen suchen" id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter" aria-label="Bestellstatus filtern"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
+        <div class="extra-tools"><input type="search" aria-label="Bestellungen suchen" id="order-search" placeholder="Name, Raum oder Tisch suchen"><select id="order-filter" aria-label="Bestellstatus filtern"><option value="all">Alle</option><option value="open">Offen</option><option value="done">Erledigt</option></select><select id="payment-filter" aria-label="Zahlungsstatus filtern"><option value="all">Alle Zahlungen</option><option value="unpaid">Unbezahlt</option><option value="paid">Bezahlt</option></select><button id="sound" class="outline-btn">Signalton aktivieren</button></div><div id="orders-list"><p class="muted">Bestellungen werden geladen …</p></div>
       </section>
       <div class="admin-grid" id="settings-grid">
         <section class="panel">
@@ -62,7 +62,7 @@
             <label for="product-name">Produktname</label><input id="product-name" maxlength="100" placeholder="z. B. Kaffee" required>
             <label for="product-category">Kategorie</label><select id="product-category"><option>Heißgetränke</option><option>Wasser</option><option>Softdrinks</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
             <label for="product-price">Preis in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
-            <label for="stock">Verfügbare Stückzahl (leer = unbegrenzt)</label><input type="number" min="0" step="1" id="stock"><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
+            <label for="product-image">Produktbild (optional)</label><input id="product-image" type="file" accept="image/jpeg,image/png,image/webp"><img id="image-preview" class="image-preview hidden" alt="Produktbild-Vorschau"><label class="check-label"><input id="remove-image" type="checkbox"> Vorhandenes Bild entfernen</label><p class="fine-print">JPG, PNG oder WebP, maximal 5 MB.</p><label for="stock">Verfügbare Stückzahl (leer = unbegrenzt)</label><input type="number" min="0" step="1" id="stock"><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
             <button class="primary-btn" type="submit" id="save-product">Produkt hinzufügen</button>
             <button class="text-btn hidden" type="button" id="cancel-edit">Bearbeitung abbrechen</button>
           </form>

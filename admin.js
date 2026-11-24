@@ -163,6 +163,7 @@
 
     $("admin-products").innerHTML = products.map(p => `
       <div class="admin-product ${p.active ? "" : "inactive"}">
+        ${p.image_path ? `<img class="admin-product-image" src="${esc(imageUrl(p.image_path))}" alt="" loading="lazy">` : ""}
         <span>
           <strong>${esc(p.name)}</strong>
           <small>
@@ -254,6 +255,20 @@
 
   // PRODUKTE BEARBEITEN
 
+  let previewUrl = null;
+  function previewImage(url) {
+    if(previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl=null; }
+    const img=$("image-preview"); img.classList.toggle("hidden",!url);
+    if(url) img.src=url; else img.removeAttribute("src");
+  }
+  function imageUrl(path) { return path ? db.storage.from("product-images").getPublicUrl(path).data.publicUrl : ""; }
+  $("product-image").addEventListener("change",()=>{
+    const file=$("product-image").files[0];
+    $("remove-image").checked=false;
+    previewImage(file ? null : imageUrl(products.find(p=>p.id===$("product-id").value)?.image_path));
+    if(file){previewUrl=URL.createObjectURL(file);$("image-preview").src=previewUrl;$("image-preview").classList.remove("hidden");}
+  });
+  $("remove-image").addEventListener("change",()=>{if($("remove-image").checked){$("product-image").value="";previewImage(null);}else previewImage(imageUrl(products.find(p=>p.id===$("product-id").value)?.image_path));});
   function editProduct(id) {
     const p = products.find(x => x.id === id);
 
@@ -264,6 +279,7 @@
     $("product-category").value = p.category;
     $("product-price").value = p.price;
     $("stock").value = p.stock ?? "";
+    $("product-image").value=""; $("remove-image").checked=false; previewImage(imageUrl(p.image_path));
     $("product-active").checked = p.active;
 
     $("save-product").textContent = "Änderungen speichern";
@@ -273,6 +289,7 @@
 
   function resetProduct() {
     $("product-form").reset();
+    previewImage(null);
     $("product-id").value = "";
     $("product-active").checked = true;
     $("save-product").textContent = "Produkt hinzufügen";
@@ -292,22 +309,39 @@
       active: $("product-active").checked
     };
 
+    const oldPath=products.find(p=>p.id===id)?.image_path || null;
+    const file=$("product-image").files[0];
+    let uploaded=null;
+    const button=$("save-product"); button.disabled=true;
+    try {
+    row.image_path=$("remove-image").checked ? null : oldPath;
+    if(file){
+      const ext={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[file.type];
+      if(!ext || file.size>5*1024*1024) return message("Bitte JPG, PNG oder WebP bis 5 MB auswählen.");
+      uploaded=crypto.randomUUID()+"."+ext;
+      const {error}=await db.storage.from("product-images").upload(uploaded,file,{contentType:file.type});
+      if(error) return message("Bild konnte nicht hochgeladen werden: "+error.message);
+      row.image_path=uploaded;
+    }
     const result = id
       ? await db.from("products").update(row).eq("id", id)
       : await db.from("products").insert(row);
 
     if (result.error) {
+      if(uploaded) await db.storage.from("product-images").remove([uploaded]);
       return message(
         "Produkt konnte nicht gespeichert werden: " +
         result.error.message
       );
     }
 
+    if(oldPath && oldPath!==row.image_path) await db.storage.from("product-images").remove([oldPath]);
     resetProduct();
 
     if (await loadProducts()) {
       message("Produkt gespeichert.");
     }
+    } catch(error){message("Speichern fehlgeschlagen: "+error.message);} finally {button.disabled=false;}
   });
 
   $("cancel-edit").addEventListener("click", resetProduct);
@@ -330,6 +364,7 @@
           teacher_name,
           room,
           place_type,
+          paid,
           completed,
           note,
           created_at,
@@ -466,6 +501,14 @@
     $("stat-total").textContent = money(total);
 
     $("stat-open").textContent = orders.filter(o=>!o.completed).length;
+    const paidTotal = orders.filter(o=>o.paid).reduce((sum,o)=>sum+(o.order_items||[]).reduce((n,i)=>n+Number(i.unit_price)*Number(i.quantity),0),0);
+    const paidCount = orders.filter(o=>o.paid).length;
+    const percent = total>0 ? Math.round(paidTotal/total*100) : 0;
+    $("stat-paid").textContent=money(paidTotal);
+    $("stat-unpaid").textContent=money(total-paidTotal);
+    $("payment-count").textContent=`${paidCount} von ${orders.length} bezahlt`;
+    $("payment-progress").value=percent;
+    $("payment-caption").textContent=`${percent} % des Bestellwerts bezahlt`;
     const visible = orders.filter(matchesOrder).sort((a,b)=>Number(a.completed)-Number(b.completed));
     $("orders-list").innerHTML = visible.length ? visible.map(o=>{
       const sum=(o.order_items||[]).reduce((n,i)=>n+Number(i.unit_price)*Number(i.quantity),0);
@@ -473,11 +516,25 @@
       return `<article class="order-row order-entry ${o.completed?'is-done':''}">
         <div class="order-meta"><div class="order-state">${o.completed?'✓ Erledigt':'Offen'}</div><strong>${esc(o.teacher_name)}</strong><small>${o.place_type==='Tisch'?'Tisch':'Raum'}: ${esc(o.room||'Nicht angegeben')}</small><small>${esc(date)}</small></div>
         <div class="order-detail">${(o.order_items||[]).map(i=>`<div class="order-item"><span><b>${i.quantity} ×</b> ${esc(i.product_name||i.products?.name||'Produkt')}</span><span>${money(Number(i.unit_price)*Number(i.quantity))}</span></div>`).join('')}${o.note?`<small class="order-note">Anmerkung: ${esc(o.note)}</small>`:''}</div>
-        <div class="order-actions"><strong class="order-price">${money(sum)}</strong><label class="order-check"><input type="checkbox" data-complete="${esc(o.id)}" ${o.completed?'checked':''}> Erledigt</label><button type="button" class="delete-btn" data-delete="${esc(o.id)}">Löschen</button></div>
+        <div class="order-actions"><strong class="order-price">${money(sum)}</strong><div class="status-controls"><label class="status-toggle ${o.completed?'selected':''}"><input type="checkbox" data-complete="${esc(o.id)}" ${o.completed?'checked':''}><span>${o.completed?'Erledigt':'Offen'}</span></label><label class="status-toggle payment-toggle ${o.paid?'selected':''}"><input type="checkbox" data-paid="${esc(o.id)}" ${o.paid?'checked':''}><span>${o.paid?'Bezahlt':'Unbezahlt'}</span></label></div><button type="button" class="delete-btn" data-delete="${esc(o.id)}">Löschen</button></div>
       </article>`;
     }).join('') : `<p class="empty-orders">${orders.length?'Keine passenden Bestellungen gefunden.':'Noch keine Bestellungen eingegangen.'}</p>`;
 
     bindOrderActions();
+    $("orders-list").querySelectorAll("[data-paid]").forEach(box=>box.addEventListener("change",async()=>{
+      const paid=box.checked;
+      if(orderAction||loadingOrders){box.checked=!paid;return;}
+      orderAction=true;box.disabled=true;
+      try {
+        const {data,error}=await db.from("orders").update({paid}).eq("id",box.dataset.paid).select("id").single();
+        if(error||!data) throw new Error(error?.message||"Keine Bestätigung");
+        const order=orders.find(o=>o.id===box.dataset.paid);
+        if(order) order.paid=paid;
+        if(loggedIn) renderOrders();
+        message(paid?"Zahlung als bezahlt markiert.":"Zahlung wieder als offen markiert.");
+      } catch(error){box.checked=!paid;message("Zahlungsstatus konnte nicht gespeichert werden: "+error.message);}
+      finally{orderAction=false;box.disabled=false;}
+    }));
   }
 
   // BESTELLUNGEN ABHAKEN UND LÖSCHEN
@@ -843,7 +900,8 @@
       "Menge",
       "Einzelpreis",
       "Anmerkung",
-      "Status"
+      "Status",
+      "Zahlungsstatus"
     ]];
 
     orders.forEach(o => {
@@ -858,7 +916,8 @@
           i.quantity,
           Number(i.unit_price).toFixed(2),
           o.note || "",
-          o.completed ? "Erledigt" : "Offen"
+          o.completed ? "Erledigt" : "Offen",
+          o.paid ? "Bezahlt" : "Unbezahlt"
         ]);
       });
     });
@@ -995,12 +1054,12 @@
   }
 
   function localDate(v){const d=new Date(v);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);}
-  function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;return (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed);}
-  $("order-search").oninput=renderOrders; $("order-filter").onchange=renderOrders;
+  function matchesOrder(o){const q=$("order-search").value.toLowerCase(), f=$("order-filter").value;const p=$("payment-filter").value;return (p==="all"||p==="paid"&&o.paid||p==="unpaid"&&!o.paid) && (o.teacher_name+" "+o.room).toLowerCase().includes(q) && (f==="all" || f==="open"&&!o.completed || f==="done"&&o.completed);}
+  $("order-search").oninput=renderOrders; $("order-filter").onchange=renderOrders; $("payment-filter").onchange=renderOrders;
   function beep(){try{const o=sound.createOscillator(),g=sound.createGain();o.connect(g);g.connect(sound.destination);g.gain.value=.08;o.frequency.value=660;o.start();o.stop(sound.currentTime+.2);}catch(e){}}
   $("sound").onclick=async()=>{if(sound){await sound.close();sound=null;$("sound").textContent="Signalton aktivieren";}else{sound=new (window.AudioContext||window.webkitAudioContext)();await sound.resume();beep();$("sound").textContent="Signalton deaktivieren";}};
   async function loadArchive(){const {data,error}=await db.from("event_archive").select("*").order("archived_at",{ascending:false});if(error)return message(error.message);$("archive-select").innerHTML='<option value="">Archiv auswählen</option>'+data.map(e=>`<option value="${e.event_key}">${esc(e.settings.title)} · ${esc(e.settings.event_date||"")}</option>`).join("");}
-  $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.completed?"Erledigt":"Offen"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
+  $("archive-select").onchange=async()=>{const id=$("archive-select").value;$("archive-list").textContent="";if(!id)return;const {data,error}=await db.from("orders").select("*,order_items(*)").eq("event_key",id);if(error)return message(error.message);$("archive-list").innerHTML=data.map(o=>`<p><strong>${esc(o.teacher_name)}</strong> · ${esc(o.place_type)} ${esc(o.room)} · ${o.completed?"Erledigt":"Offen"} · ${o.paid?"Bezahlt":"Unbezahlt"}<br>${o.order_items.map(i=>esc(i.quantity+" × "+i.product_name)).join(" · ")}</p>`).join("")||"Keine Bestellungen";};
   $("archive-event").onclick=async()=>{if(!confirm("Aktuelle Veranstaltung archivieren? Die Bestellannahme wird geschlossen. Produkte und Restbestände bleiben erhalten."))return;const {error}=await db.rpc("archive_event");if(error)return message(error.message);seen=null;await loadEvent();await loadOrders();await loadArchive();};
   init();
 

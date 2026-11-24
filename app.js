@@ -17,7 +17,7 @@
       if (!items.length) return "";
       return `<section class="product-group"><h3>${group}</h3><div class="product-grid">${items.map(p=>`
         <article class="product-card">
-          <div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>
+          ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
           <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${money(p.price)}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
           <div class="quantity-control"><button type="button" aria-label="${escapeHtml(p.name)} verringern" data-minus="${p.id}">−</button><output>${cart.get(p.id)||0}</output><button type="button" aria-label="${escapeHtml(p.name)} erhöhen" data-plus="${p.id}" ${p.stock===0?"disabled":""}>+</button></div>
         </article>`).join("")}</div></section>`;
@@ -43,7 +43,7 @@
     if(!configured || !window.supabase) return showSetupError();
     db = window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
     const [{data:p,error:pe},{data:e,error:ee}] = await Promise.all([
-      db.from("products").select("id,name,category,price,active,stock").eq("active",true).order("category").order("name"),
+      db.from("products").select("id,name,category,price,active,stock,image_path").eq("active",true).order("category").order("name"),
       db.from("event_settings").select("*").eq("id",1).maybeSingle()
     ]);
     const eventName = !ee && e?.title?.trim() || "Schulveranstaltung";
