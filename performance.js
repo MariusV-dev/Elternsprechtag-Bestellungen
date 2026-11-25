@@ -1,0 +1,1 @@
+(()=>{const eco=()=>navigator.connection?.saveData===true||(navigator.deviceMemory&&navigator.deviceMemory<=2)||matchMedia('(prefers-reduced-motion: reduce)').matches;window.portalInterval=()=>eco()?60000:30000;document.documentElement.classList.toggle('eco',!!eco());})();

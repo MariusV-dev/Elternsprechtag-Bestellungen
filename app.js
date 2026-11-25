@@ -18,7 +18,7 @@
       return `<section class="product-group"><h3>${group}</h3><div class="product-grid">${items.map(p=>`
         <article class="product-card">
           ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy" decoding="async">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
-          <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${(p.price_mode==="donation"?"Spendenbasis"+(p.price?" · empfohlen "+money(p.price):""):p.price_mode==="free"?"Kostenlos":money(p.price))}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
+          <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${(p.price_mode==="donation"?"Spendenbasis":p.price_mode==="free"?"Kostenlos":money(p.price))}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
           <div class="quantity-control"><button type="button" aria-label="${escapeHtml(p.name)} verringern" data-minus="${p.id}">−</button><output>${cart.get(p.id)||0}</output><button type="button" aria-label="${escapeHtml(p.name)} erhöhen" data-plus="${p.id}" ${p.stock===0?"disabled":""}>+</button></div>
         </article>`).join("")}</div></section>`;
     }).join("") || `<p class="muted">Aktuell sind noch keine Produkte freigeschaltet.</p>`;
@@ -29,7 +29,7 @@
     const p=products.find(x=>x.id===id);
     const next = Math.min(100,p?.stock??100,Math.max(0,(cart.get(id)||0)+delta));
     if(next) cart.set(id,next); else cart.delete(id);
-    renderProducts(); renderCart();
+    document.querySelector(`[data-plus="${id}"]`)?.parentElement.querySelector("output").replaceChildren(String(next)); renderCart();
   }
   function renderCart() {
     const selected = products.filter(p=>(cart.get(p.id)||0)>0);
@@ -116,7 +116,7 @@
   function refreshLocalStatus(){if(!eventInfo)return;updateStatus();const open=isOpen();if(open!==lastOpen){lastOpen=open;renderCart();}}
   async function pollEvent(){if(!db||document.hidden||polling)return;polling=true;try{const {data,error}=await db.from("event_settings").select("*").eq("id",1).maybeSingle();if(!error){if(data?.event_key!==eventInfo?.event_key){location.reload();return;}eventInfo=data;refreshLocalStatus();}}catch{}finally{polling=false;}}
   function stopTimers(){clearInterval(statusTimer);clearInterval(pollTimer);}
-  function startTimers(){stopTimers();if(document.hidden)return;statusTimer=setInterval(refreshLocalStatus,1000);pollTimer=setInterval(pollEvent,30000);}
+  function startTimers(){stopTimers();if(document.hidden)return;statusTimer=setInterval(refreshLocalStatus,5000);pollTimer=setInterval(pollEvent,window.portalInterval?.()||30000);}
   document.addEventListener("visibilitychange",()=>{if(document.hidden)stopTimers();else{refreshLocalStatus();startTimers();pollEvent();}});
   startTimers();
   init();

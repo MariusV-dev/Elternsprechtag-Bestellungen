@@ -59,7 +59,7 @@
     addRefreshButton();
     loadAll();
     startAutoRefresh();
-    loadArchive();
+    loadArchive(); loadStations();
   }
 
   async function loadAll() {
@@ -127,7 +127,7 @@
       ) {
         loadOrders();
       }
-    }, 30000);
+    }, window.portalInterval?.()||30000);
   }
 
   function stopAutoRefresh() {
@@ -166,7 +166,7 @@
         <span>
           <strong>${esc(p.name)}</strong>
           <small>
-            ${esc(p.category)} · ${(p.price_mode==="donation"?"Spendenbasis · "+money(p.price):p.price_mode==="free"?"Kostenlos":money(p.price))}
+            ${esc(p.category)} · ${(p.price_mode==="donation"?"Spendenbasis":p.price_mode==="free"?"Kostenlos":money(p.price))}
             ${p.active ? "" : "· ausgeblendet"}
           </small>
         </span>
@@ -298,7 +298,7 @@
     $("product-id").value = p.id;
     $("product-name").value = p.name;
     $("product-category").value = p.category;
-    $("product-price").value = p.price; $("price-mode").value=p.price_mode; $("cash-visible").checked=p.cash_visible;
+    $("product-price").value = p.price; $("price-mode").value=p.price_mode; $("cash-visible").checked=p.cash_visible; syncPrice();
     $("stock").value = p.stock ?? "";
     $("product-image").value=""; $("remove-image").checked=false; previewImage(imageUrl(p.image_path));
     $("product-active").checked = p.active;
@@ -308,8 +308,10 @@
     $("product-name").focus();
   }
 
+  function syncPrice(){const fixed=$("price-mode").value==="fixed";$("product-price").hidden=!fixed;$("product-price").required=fixed;document.querySelector("label[for=product-price]").hidden=!fixed;}
+  $("price-mode").onchange=syncPrice; syncPrice();
   function resetProduct() {
-    $("product-form").reset();
+    $("product-form").reset(); syncPrice();
     previewImage(null);
     $("product-id").value = "";
     $("product-active").checked = true;
@@ -325,7 +327,7 @@
     const row = {
       name: $("product-name").value.trim(),
       category: $("product-category").value,
-      price: $("price-mode").value==="free"?0:Number($("product-price").value), price_mode:$("price-mode").value,cash_visible:$("cash-visible").checked,
+      price: $("price-mode").value!=="fixed"?0:Number($("product-price").value), price_mode:$("price-mode").value,cash_visible:$("cash-visible").checked,
       stock: $("stock").value === "" ? null : Number($("stock").value),
       active: $("product-active").checked
     };
@@ -504,7 +506,11 @@
 
   // EINZELNE BESTELLUNGEN ANZEIGEN
 
-  async function loadCashSummary(){const key=savedEvent?.event_key;if(!key)return;const {data,error}=await db.from("cash_sales").select("fixed_total,donation,voided_at").eq("event_key",key);if(error){$("cash-summary").textContent=error.message;return;}if(key!==savedEvent?.event_key)return;const a=data.filter(x=>!x.voided_at), f=a.reduce((n,x)=>n+Number(x.fixed_total),0),d=a.reduce((n,x)=>n+Number(x.donation),0),od=orders.reduce((n,x)=>n+Number(x.donation_received||0),0),of=orders.filter(x=>x.paid).reduce((n,x)=>n+x.order_items.reduce((m,i)=>m+Number(i.unit_price)*i.quantity,0),0);$("cash-summary").textContent=`Stand: ${money(f)} Festpreise · ${money(d)} Spenden | Online: ${money(of)} bezahlt · ${money(od)} Spenden | Gesamteinnahmen: ${money(f+d+od+of)} | ${a.length} Standverkäufe`;}
+  async function loadStations(){const {data,error}=await db.from('cash_stations').select('*').order('name');if(error)return message(error.message);$('stations').innerHTML=data.map(t=>`<div class="station-row">${esc(t.name)} <button class="outline-btn" data-station="${t.id}" data-enabled="${!t.enabled}">${t.enabled?'Deaktivieren':'Aktivieren'}</button></div>`).join('');}
+  $('stations').onclick=async e=>{const b=e.target.closest('[data-station]');if(!b)return;const {error}=await db.from('cash_stations').update({enabled:b.dataset.enabled==='true'}).eq('id',b.dataset.station);if(error)message(error.message);await loadStations();};
+  $('station-form').onsubmit=async e=>{e.preventDefault();const {error}=await db.from('cash_stations').insert({name:$('station-name').value.trim()});if(error)return message(error.message);e.target.reset();await loadStations();};
+  async function loadCashSummary(){const key=savedEvent?.event_key;if(!key)return;const {data,error}=await db.rpc('cash_stats',{p_event:key});if(error){$('cash-summary').textContent=error.message;return;}if(key!==savedEvent?.event_key)return;const f=data.reduce((n,x)=>n+Number(x.fixed),0),d=data.reduce((n,x)=>n+Number(x.donations),0),od=orders.reduce((n,x)=>n+Number(x.donation_received||0),0),of=orders.filter(x=>x.paid).reduce((n,x)=>n+x.order_items.reduce((m,i)=>m+Number(i.unit_price)*i.quantity,0),0),total=f+d+od+of,share=total?100*(d+od)/total:0;$('cash-summary').innerHTML=`<div class="finance-grid">${[['Gesamteinnahmen',total],['Spenden',d+od],['Festpreise',f+of],['Standverkäufe',f+d]].map(([l,v])=>`<article><small>${l}</small><strong>${money(v)}</strong></article>`).join('')}</div><div class="finance-chart"><div class="donut" style="--share:${share}%" role="img" aria-label="Spendenanteil ${share.toFixed(1)} Prozent"></div><div><strong>${money(total)}</strong><p>Spenden: ${share.toFixed(1)} %</p><p>Online: ${money(od+of)}</p></div></div><h3>Einnahmen pro Kasse</h3>${data.map(x=>`<div class="station-row">${esc(x.station)} · ${x.sales} Verkäufe <strong>${money(Number(x.fixed)+Number(x.donations))}</strong></div>`).join('')}`;}
+
   function renderOrders() {
 
     renderProductSummary();
