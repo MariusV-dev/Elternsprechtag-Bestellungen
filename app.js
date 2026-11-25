@@ -18,7 +18,7 @@
       return `<section class="product-group"><h3>${group}</h3><div class="product-grid">${items.map(p=>`
         <article class="product-card">
           ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy" decoding="async">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
-          <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${money(p.price)}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
+          <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${(p.price_mode==="donation"?"Spendenbasis"+(p.price?" · empfohlen "+money(p.price):""):p.price_mode==="free"?"Kostenlos":money(p.price))}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
           <div class="quantity-control"><button type="button" aria-label="${escapeHtml(p.name)} verringern" data-minus="${p.id}">−</button><output>${cart.get(p.id)||0}</output><button type="button" aria-label="${escapeHtml(p.name)} erhöhen" data-plus="${p.id}" ${p.stock===0?"disabled":""}>+</button></div>
         </article>`).join("")}</div></section>`;
     }).join("") || `<p class="muted">Aktuell sind noch keine Produkte freigeschaltet.</p>`;
@@ -33,8 +33,8 @@
   }
   function renderCart() {
     const selected = products.filter(p=>(cart.get(p.id)||0)>0);
-    $("cart-lines").innerHTML = selected.length ? selected.map(p=>`<div class="cart-line"><span>${escapeHtml(p.name)} <small>× ${cart.get(p.id)}</small></span><strong>${money(p.price*cart.get(p.id))}</strong></div>`).join("") : `<p class="muted">Noch keine Artikel ausgewählt.</p>`;
-    const total = selected.reduce((s,p)=>s+p.price*cart.get(p.id),0);
+    $("cart-lines").innerHTML = selected.length ? selected.map(p=>`<div class="cart-line"><span>${escapeHtml(p.name)} <small>× ${cart.get(p.id)}</small></span><strong>${(p.price_mode==="donation"?"Freiwillige Spende":money((p.price_mode==="fixed"?p.price:0)*cart.get(p.id)))}</strong></div>`).join("") : `<p class="muted">Noch keine Artikel ausgewählt.</p>`;
+    const total = selected.reduce((s,p)=>s+(p.price_mode==="fixed"?p.price:0)*cart.get(p.id),0);
     $("cart-total").textContent = money(total);
     $("submit-order").disabled = !selected.length || !isOpen();
   }
@@ -43,7 +43,7 @@
     if(!configured || !window.supabase) { updateStatus(); return showSetupError(); }
     db = window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
     const [{data:p,error:pe},{data:e,error:ee}] = await Promise.all([
-      db.from("products").select("id,name,category,price,active,stock,image_path").eq("active",true).order("category").order("name"),
+      db.from("products").select("id,name,category,price,active,stock,image_path,price_mode").eq("active",true).order("category").order("name"),
       db.from("event_settings").select("*").eq("id",1).maybeSingle()
     ]);
     const eventName = !ee && e?.title?.trim() || "Schulveranstaltung";

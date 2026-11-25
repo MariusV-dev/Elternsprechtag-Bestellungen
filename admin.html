@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="responsive.css?v=20261125-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=20261125-7"></script>
+  <script defer src="admin.js?v=kasse1"></script>
 </head>
 <body class="admin-body">
   <header class="site-header">
@@ -61,7 +61,7 @@
             <input type="hidden" id="product-id">
             <label for="product-name">Produktname</label><input id="product-name" maxlength="100" placeholder="z. B. Kaffee" required>
             <label for="product-category">Kategorie</label><select id="product-category"><option>Heißgetränke</option><option>Wasser</option><option>Softdrinks</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
-            <label for="product-price">Preis in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
+            <label for="price-mode">Preisart</label><select id="price-mode"><option value="fixed">Festpreis</option><option value="donation">Spendenbasis</option><option value="free">Kostenlos</option></select><label for="cash-visible"><input type="checkbox" id="cash-visible" checked> An der Kasse verfügbar</label><label for="product-price">Preis / freiwilliger Spendenrichtwert in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
             <label for="product-image">Produktbild (optional)</label><input id="product-image" type="file" accept="image/jpeg,image/png,image/webp"><img id="image-preview" class="image-preview hidden" alt="Produktbild-Vorschau"><label class="check-label"><input id="remove-image" type="checkbox"> Vorhandenes Bild entfernen</label><p class="fine-print">JPG, PNG oder WebP, Original maximal 20 MB. Bilder werden automatisch verkleinert und komprimiert.</p><label for="stock">Verfügbare Stückzahl (leer = unbegrenzt)</label><input type="number" min="0" step="1" id="stock"><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
             <button class="primary-btn" type="submit" id="save-product">Produkt hinzufügen</button>
             <button class="text-btn hidden" type="button" id="cancel-edit">Bearbeitung abbrechen</button>
@@ -70,7 +70,7 @@
         </section>
       </div>
 
-      <section class="panel"><h2>Veranstaltungsarchiv</h2><button id="archive-event" class="outline-btn">Archivieren und neue Veranstaltung starten</button><select id="archive-select"><option value="">Aktuelle Veranstaltung</option></select><div id="archive-list"></div></section><p class="admin-notice" id="admin-message" role="status"></p>
+      <section class="panel"><h2>Kasse und Spenden</h2><a href="kasse.html">Kasse öffnen</a><div id="cash-summary"></div></section><section class="panel"><h2>Veranstaltungsarchiv</h2><button id="archive-event" class="outline-btn">Archivieren und neue Veranstaltung starten</button><select id="archive-select"><option value="">Aktuelle Veranstaltung</option></select><div id="archive-list"></div></section><p class="admin-notice" id="admin-message" role="status"></p>
     </section>
   </main>
   <footer><span>Eichendorff · Administration</span><span>Nur für berechtigte Personen</span></footer>

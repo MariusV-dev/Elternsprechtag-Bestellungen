@@ -166,7 +166,7 @@
         <span>
           <strong>${esc(p.name)}</strong>
           <small>
-            ${esc(p.category)} · ${money(p.price)}
+            ${esc(p.category)} · ${(p.price_mode==="donation"?"Spendenbasis · "+money(p.price):p.price_mode==="free"?"Kostenlos":money(p.price))}
             ${p.active ? "" : "· ausgeblendet"}
           </small>
         </span>
@@ -298,7 +298,7 @@
     $("product-id").value = p.id;
     $("product-name").value = p.name;
     $("product-category").value = p.category;
-    $("product-price").value = p.price;
+    $("product-price").value = p.price; $("price-mode").value=p.price_mode; $("cash-visible").checked=p.cash_visible;
     $("stock").value = p.stock ?? "";
     $("product-image").value=""; $("remove-image").checked=false; previewImage(imageUrl(p.image_path));
     $("product-active").checked = p.active;
@@ -325,7 +325,7 @@
     const row = {
       name: $("product-name").value.trim(),
       category: $("product-category").value,
-      price: Number($("product-price").value),
+      price: $("price-mode").value==="free"?0:Number($("product-price").value), price_mode:$("price-mode").value,cash_visible:$("cash-visible").checked,
       stock: $("stock").value === "" ? null : Number($("stock").value),
       active: $("product-active").checked
     };
@@ -387,12 +387,14 @@
           room,
           place_type,
           paid,
+          donation_received,
           completed,
           note,
           created_at,
           order_items(
             quantity,
             unit_price,
+            price_mode,
             product_name,
             products(name,category)
           )
@@ -502,9 +504,11 @@
 
   // EINZELNE BESTELLUNGEN ANZEIGEN
 
+  async function loadCashSummary(){const key=savedEvent?.event_key;if(!key)return;const {data,error}=await db.from("cash_sales").select("fixed_total,donation,voided_at").eq("event_key",key);if(error){$("cash-summary").textContent=error.message;return;}if(key!==savedEvent?.event_key)return;const a=data.filter(x=>!x.voided_at), f=a.reduce((n,x)=>n+Number(x.fixed_total),0),d=a.reduce((n,x)=>n+Number(x.donation),0),od=orders.reduce((n,x)=>n+Number(x.donation_received||0),0),of=orders.filter(x=>x.paid).reduce((n,x)=>n+x.order_items.reduce((m,i)=>m+Number(i.unit_price)*i.quantity,0),0);$("cash-summary").textContent=`Stand: ${money(f)} Festpreise · ${money(d)} Spenden | Online: ${money(of)} bezahlt · ${money(od)} Spenden | Gesamteinnahmen: ${money(f+d+od+of)} | ${a.length} Standverkäufe`;}
   function renderOrders() {
 
     renderProductSummary();
+    loadCashSummary();
 
     let total = 0;
     let count = 0;
@@ -536,11 +540,12 @@
       return `<article class="order-row order-entry ${o.completed?'is-done':''}">
         <div class="order-meta"><div class="order-state">${o.completed?'✓ Erledigt':'Offen'}</div><strong>${esc(o.teacher_name)}</strong><small>${o.place_type==='Tisch'?'Tisch':'Raum'}: ${esc(o.room||'Nicht angegeben')}</small><small>${esc(date)}</small></div>
         <div class="order-detail">${(o.order_items||[]).map(i=>`<div class="order-item"><span><b>${i.quantity} ×</b> ${esc(i.product_name||i.products?.name||'Produkt')}</span><span>${money(Number(i.unit_price)*Number(i.quantity))}</span></div>`).join('')}${o.note?`<small class="order-note">Anmerkung: ${esc(o.note)}</small>`:''}</div>
-        <div class="order-actions"><strong class="order-price">${money(sum)}</strong><div class="status-controls"><label class="status-toggle ${o.completed?'selected':''}"><input type="checkbox" data-complete="${esc(o.id)}" ${o.completed?'checked':''}><span>${o.completed?'Erledigt':'Offen'}</span></label><label class="status-toggle payment-toggle ${o.paid?'selected':''}"><input type="checkbox" data-paid="${esc(o.id)}" ${o.paid?'checked':''}><span>${o.paid?'Bezahlt':'Unbezahlt'}</span></label></div><button type="button" class="delete-btn" data-delete="${esc(o.id)}">Löschen</button></div>
+        <div class="order-actions"><strong class="order-price">${money(sum)}</strong><button type="button" data-donation="${esc(o.id)}">Spende: ${money(o.donation_received)}</button><div class="status-controls"><label class="status-toggle ${o.completed?'selected':''}"><input type="checkbox" data-complete="${esc(o.id)}" ${o.completed?'checked':''}><span>${o.completed?'Erledigt':'Offen'}</span></label><label class="status-toggle payment-toggle ${o.paid?'selected':''}"><input type="checkbox" data-paid="${esc(o.id)}" ${o.paid?'checked':''}><span>${sum===0?'Kein Festpreis':o.paid?'Bezahlt':'Unbezahlt'}</span></label></div><button type="button" class="delete-btn" data-delete="${esc(o.id)}">Löschen</button></div>
       </article>`;
     }).join('') : `<p class="empty-orders">${orders.length?'Keine passenden Bestellungen gefunden.':'Noch keine Bestellungen eingegangen.'}</p>`;
 
     bindOrderActions();
+    $("orders-list").querySelectorAll("[data-donation]").forEach(b=>b.onclick=async()=>{const o=orders.find(x=>x.id===b.dataset.donation);const v=prompt("Erhaltene freiwillige Spende in Euro",o.donation_received||0);if(v===null)return;const n=Number(v.replace(",","."));if(!Number.isFinite(n)||n<0)return;const {error}=await db.from("orders").update({donation_received:n}).eq("id",o.id);if(error)return message(error.message);await loadOrders();});
     $("orders-list").querySelectorAll("[data-paid]").forEach(box=>box.addEventListener("change",async()=>{
       const paid=box.checked;
       if(orderAction||loadingOrders){box.checked=!paid;return;}
