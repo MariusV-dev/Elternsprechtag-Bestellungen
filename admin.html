@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="responsive.css?v=20261125-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=12"></script>
-<link rel="stylesheet" href="modern.css?v=12"><script defer src="performance.js"></script></head>
+  <script defer src="admin.js?v=13"></script>
+<link rel="stylesheet" href="modern.css?v=13"><script defer src="performance.js"></script></head>
 <body class="admin-body">
   <header class="site-header">
     <a class="brand" href="./"><span class="brand-mark">E</span><span><strong>Eichendorff</strong><small id="admin-event-brand">Veranstaltungsverwaltung</small></span></a>
@@ -74,5 +74,5 @@
     </section>
   </main>
   <footer><span>Eichendorff · Administration</span><span>Nur für berechtigte Personen</span></footer>
-<dialog id="don-dialog"><form method="dialog"><h2>Spende erfassen</h2><label>Erhaltener Betrag (€)<input id="don-value" type="number" min="0" max="10000" step="0.01" required></label><div class="station-actions"><button class="outline-btn" value="cancel" formnovalidate>Abbrechen</button><button class="primary-btn" value="save">Speichern</button></div></form></dialog></body>
+<dialog id="don-dialog"><form method="dialog"><h2>Zahlung erfassen</h2><p id="don-fixed"></p><label>Erhaltener Gesamtbetrag (€)<input id="don-value" type="number" min="0" max="10000" step="0.01" required></label><p id="don-preview" aria-live="polite"></p><div class="station-actions"><button class="outline-btn" value="cancel" formnovalidate>Abbrechen</button><button class="primary-btn" value="save">Speichern</button></div></form></dialog></body>
 </html>

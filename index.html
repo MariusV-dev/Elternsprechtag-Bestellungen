@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="responsive.css?v=11">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="app.js?v=12"></script>
-<link rel="stylesheet" href="modern.css?v=12"><script defer src="performance.js"></script></head>
+  <script defer src="app.js?v=13"></script>
+<link rel="stylesheet" href="modern.css?v=13"><script defer src="performance.js"></script></head>
 <body>
   <header class="site-header">
     <a class="brand" href="./" aria-label="Startseite">
@@ -23,8 +23,8 @@
   <main class="main-wrap">
     <section class="hero">
       <div class="eyebrow">SCHULVERANSTALTUNG</div>
-      <h1>Bestellung für:<br><em id="event-name">Schulveranstaltung</em></h1>
-      <p class="hero-copy">Hier kannst du deine Speisen und Getränke für die Veranstaltung bestellen. Wähle einfach deine gewünschten Artikel aus und sende deine Bestellung ab.</p>
+      <h1>Bestellen für<br><em id="event-name">Schulveranstaltung</em></h1>
+      <p class="hero-copy">Wähle deine Speisen und Getränke aus und sende deine Bestellung ab. Wir freuen uns auf deine Bestellung.</p>
       <div class="event-strip">
         <span class="event-icon">▦</span>
         <span><small>VERANSTALTUNG</small><strong id="event-date-label">Termin wird bekannt gegeben</strong></span>
@@ -47,14 +47,14 @@
         <div class="card-top"><div class="eyebrow">DEINE BESTELLUNG</div><span class="basket-icon">＋</span></div>
         <h2>Deine Auswahl</h2>
         <div id="cart-lines" class="cart-lines"><p class="muted">Noch keine Artikel ausgewählt.</p></div>
-        <div class="cart-total"><span>Voraussichtliche Summe</span><strong id="cart-total">0,00 €</strong></div>
+        <div class="cart-total"><span>Festpreis gesamt</span><strong id="cart-total">0,00 €</strong></div>
         <form id="order-form">
           <label for="teacher-name">Dein Name</label>
           <input id="teacher-name" name="teacher-name" maxlength="100" placeholder="Vor- und Nachname" required>
           <label for="teacher-note">Anmerkung <span class="muted">(optional)</span></label>
           <textarea id="teacher-note" name="teacher-note" rows="2" maxlength="500" placeholder="z. B. Besonderheiten"></textarea>
           <button class="primary-btn" type="submit" id="submit-order" disabled>Bestellung absenden <span>→</span></button>
-          <p class="fine-print">Bezahlung vor Ort: bar oder per PayPal (außerhalb des Portals). Deine Bestellung wird für die Organisation gespeichert.</p>
+          <p class="fine-print">Die Bezahlung erfolgt vor Ort in bar oder per PayPal. Spenden sind freiwillig. Deine Bestellung wird zur Organisation gespeichert.</p>
         </form>
       </aside>
     </section>
