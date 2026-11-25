@@ -93,7 +93,7 @@
 
       <small id="refresh-status"
         style="color:#64748b;">
-        Automatische Aktualisierung alle 10 Sekunden
+        Automatische Aktualisierung alle 30 Sekunden
       </small>
     `;
 
@@ -117,6 +117,7 @@
   function startAutoRefresh() {
     stopAutoRefresh();
 
+    if (document.hidden || !loggedIn) return;
     refreshTimer = setInterval(() => {
       if (
         loggedIn &&
@@ -126,7 +127,7 @@
       ) {
         loadOrders();
       }
-    }, 10000);
+    }, 30000);
   }
 
   function stopAutoRefresh() {
@@ -137,9 +138,8 @@
   }
 
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && loggedIn) {
-      loadOrders();
-    }
+    if (document.hidden) stopAutoRefresh();
+    else if (loggedIn) { startAutoRefresh(); loadOrders(); }
   });
 
   // PRODUKTE LADEN
@@ -162,7 +162,7 @@
 
     $("admin-products").innerHTML = products.map(p => `
       <div class="admin-product ${p.active ? "" : "inactive"}">
-        ${p.image_path ? `<img class="admin-product-image" src="${esc(imageUrl(p.image_path))}" alt="" loading="lazy">` : ""}
+        ${p.image_path ? `<img class="admin-product-image" src="${esc(imageUrl(p.image_path))}" alt="" loading="lazy" decoding="async">` : ""}
         <span>
           <strong>${esc(p.name)}</strong>
           <small>
@@ -260,6 +260,28 @@
     const img=$("image-preview"); img.classList.toggle("hidden",!url);
     if(url) img.src=url; else img.removeAttribute("src");
   }
+  async function compressProductImage(file) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("Bitte JPG, PNG oder WebP auswählen.");
+    if (file.size > 20 * 1024 * 1024) throw new Error("Das Originalbild darf maximal 20 MB groß sein.");
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error("Bild konnte nicht gelesen werden.")); img.src = url; });
+      const scale = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const type = file.type === "image/jpeg" ? "image/jpeg" : "image/webp";
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, type, 0.88));
+      if (!blob) throw new Error("Bildkomprimierung fehlgeschlagen.");
+      if (scale === 1 && file.size <= blob.size && file.size <= 5 * 1024 * 1024) return file;
+      if (blob.size > 5 * 1024 * 1024) throw new Error("Komprimiertes Bild ist zu groß.");
+      return blob;
+    } finally { URL.revokeObjectURL(url); }
+  }
   function imageUrl(path) { return path ? db.storage.from("product-images").getPublicUrl(path).data.publicUrl : ""; }
   $("product-image").addEventListener("change",()=>{
     const file=$("product-image").files[0];
@@ -315,10 +337,11 @@
     try {
     row.image_path=$("remove-image").checked ? null : oldPath;
     if(file){
-      const ext={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[file.type];
-      if(!ext || file.size>5*1024*1024) return message("Bitte JPG, PNG oder WebP bis 5 MB auswählen.");
+      let compressed;
+      try { compressed = await compressProductImage(file); } catch (error) { return message(error.message); }
+      const ext={"image/jpeg":"jpg","image/png":"png","image/webp":"webp"}[compressed.type];
       uploaded=crypto.randomUUID()+"."+ext;
-      const {error}=await db.storage.from("product-images").upload(uploaded,file,{contentType:file.type});
+      const {error}=await db.storage.from("product-images").upload(uploaded,compressed,{contentType:compressed.type});
       if(error) return message("Bild konnte nicht hochgeladen werden: "+error.message);
       row.image_path=uploaded;
     }
@@ -396,7 +419,7 @@
         $("refresh-status").textContent =
           "Zuletzt aktualisiert: " +
           new Date().toLocaleTimeString("de-DE") +
-          " · Automatisch alle 10 Sekunden";
+          " · Automatisch alle 30 Sekunden";
       }
 
       return true;

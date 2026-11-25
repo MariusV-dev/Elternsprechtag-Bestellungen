@@ -17,7 +17,7 @@
       if (!items.length) return "";
       return `<section class="product-group"><h3>${group}</h3><div class="product-grid">${items.map(p=>`
         <article class="product-card">
-          ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
+          ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy" decoding="async">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
           <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${money(p.price)}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
           <div class="quantity-control"><button type="button" aria-label="${escapeHtml(p.name)} verringern" data-minus="${p.id}">−</button><output>${cart.get(p.id)||0}</output><button type="button" aria-label="${escapeHtml(p.name)} erhöhen" data-plus="${p.id}" ${p.stock===0?"disabled":""}>+</button></div>
         </article>`).join("")}</div></section>`;
@@ -112,7 +112,12 @@
     const key=state+title+detail;if(el.dataset.key!==key){el.dataset.key=key;el.dataset.state=state;const icon=document.createElement("span"); icon.className="status-icon"; icon.setAttribute("aria-hidden","true"); icon.textContent=({open:"✓",planned:"▦",waiting:"◷",closed:"×"})[state]; const copy=document.createElement("div"); copy.className="status-copy"; const label=document.createElement("small"); label.textContent=({open:"Bestellannahme geöffnet",planned:"Bestellannahme geplant",waiting:"Bestellannahme startet bald",closed:"Bestellannahme geschlossen"})[state]; copy.append(label,Object.assign(document.createElement("strong"),{textContent:title}),Object.assign(document.createElement("span"),{textContent:detail})); el.replaceChildren(icon,copy);}
   }
   let lastOpen=false;
-  setInterval(()=>{if(!eventInfo)return;updateStatus();const open=isOpen();if(open!==lastOpen){lastOpen=open;renderCart();}},1000);
-  setInterval(async()=>{if(!db||document.hidden)return;try{const {data,error}=await db.from("event_settings").select("*").eq("id",1).maybeSingle();if(!error){if(data?.event_key!==eventInfo?.event_key){location.reload();return;}eventInfo=data;updateStatus();}}catch{}},10000);
+  let statusTimer, pollTimer, polling = false;
+  function refreshLocalStatus(){if(!eventInfo)return;updateStatus();const open=isOpen();if(open!==lastOpen){lastOpen=open;renderCart();}}
+  async function pollEvent(){if(!db||document.hidden||polling)return;polling=true;try{const {data,error}=await db.from("event_settings").select("*").eq("id",1).maybeSingle();if(!error){if(data?.event_key!==eventInfo?.event_key){location.reload();return;}eventInfo=data;refreshLocalStatus();}}catch{}finally{polling=false;}}
+  function stopTimers(){clearInterval(statusTimer);clearInterval(pollTimer);}
+  function startTimers(){stopTimers();if(document.hidden)return;statusTimer=setInterval(refreshLocalStatus,1000);pollTimer=setInterval(pollEvent,30000);}
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)stopTimers();else{refreshLocalStatus();startTimers();pollEvent();}});
+  startTimers();
   init();
 })();
