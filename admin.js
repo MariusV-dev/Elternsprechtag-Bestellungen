@@ -762,6 +762,15 @@
     showEventStatus();
   }
 
+  // Bestellbeginn beim Ändern des Veranstaltungsdatums vorbelegen.
+  $("event-date").addEventListener("change", () => {
+    const date = $("event-date").value;
+    if (!date) return;
+    const previous = $("opens-at").value;
+    const time = previous ? previous.slice(11) : ($("event-start").value || "18:00");
+    $("opens-at").value = date + "T" + time;
+  });
+
   // TERMIN SPEICHERN
 
   $("event-form").addEventListener("submit", async ev => {
