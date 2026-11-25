@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="responsive.css?v=20261125-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=11"></script>
-<link rel="stylesheet" href="modern.css"><script defer src="performance.js"></script></head>
+  <script defer src="admin.js?v=12"></script>
+<link rel="stylesheet" href="modern.css?v=12"><script defer src="performance.js"></script></head>
 <body class="admin-body">
   <header class="site-header">
     <a class="brand" href="./"><span class="brand-mark">E</span><span><strong>Eichendorff</strong><small id="admin-event-brand">Veranstaltungsverwaltung</small></span></a>
@@ -49,7 +49,7 @@
             <label for="event-start">Beginn</label><input id="event-start" type="time" value="18:00" required>
             <label for="event-end">Ende</label><input id="event-end" type="time" value="20:00" required>
             <label for="event-place-type">Angabe bei der Bestellung</label><select id="event-place-type"><option value="Raum">Raum</option><option value="Tisch">Tisch</option></select>
-            <label class="check-label"><input type="checkbox" id="accepting" checked> Bestellannahme aktiviert</label><label for="opens-at">Bestellbeginn (optional)</label><input type="datetime-local" id="opens-at"><p class="fine-print">Bei Änderung des Veranstaltungsdatums wird das Datum des Bestellbeginns automatisch übernommen. Danach frei änderbar. Leer = sofort, sofern die Bestellannahme aktiviert ist.</p><label for="deadline">Bestellschluss (optional)</label><input type="datetime-local" id="deadline"><label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
+            <label class="check-label"><input type="checkbox" id="accepting" checked> Bestellannahme aktiviert</label><label for="opens-at">Bestellbeginn (optional)</label><input type="datetime-local" id="opens-at"><p class="fine-print">Datum wird übernommen. Leer = sofort, wenn aktiviert.</p><label for="deadline">Bestellschluss (optional)</label><input type="datetime-local" id="deadline"><label for="event-location">Ort</label><input id="event-location" maxlength="160" placeholder="z. B. Aula">
             <button class="primary-btn" type="submit">Termin speichern</button>
           </form>
           <div class="calendar-actions"><button class="outline-btn" id="download-ics">Kalendereintrag (.ics) herunterladen</button><p class="fine-print">Importiere die Datei in deinen Kalender und aktiviere dort eine Erinnerung. Der Download richtet keine automatische Benachrichtigung ein.</p></div>
@@ -62,7 +62,7 @@
             <label for="product-name">Produktname</label><input id="product-name" maxlength="100" placeholder="z. B. Kaffee" required>
             <label for="product-category">Kategorie</label><select id="product-category"><option>Heißgetränke</option><option>Wasser</option><option>Softdrinks</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
             <label for="price-mode">Preisart</label><select id="price-mode"><option value="fixed">Festpreis</option><option value="donation">Spendenbasis</option><option value="free">Kostenlos</option></select><label for="cash-visible"><input type="checkbox" id="cash-visible" checked> An der Kasse verfügbar</label><label for="product-price">Festpreis in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
-            <label for="product-image">Produktbild (optional)</label><input id="product-image" type="file" accept="image/jpeg,image/png,image/webp"><img id="image-preview" class="image-preview hidden" alt="Produktbild-Vorschau"><label class="check-label"><input id="remove-image" type="checkbox"> Vorhandenes Bild entfernen</label><p class="fine-print">JPG, PNG oder WebP, Original maximal 20 MB. Bilder werden automatisch verkleinert und komprimiert.</p><label for="stock">Verfügbare Stückzahl (leer = unbegrenzt)</label><input type="number" min="0" step="1" id="stock"><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
+            <label for="product-image">Produktbild (optional)</label><input id="product-image" type="file" accept="image/jpeg,image/png,image/webp"><img id="image-preview" class="image-preview hidden" alt="Produktbild-Vorschau"><label class="check-label"><input id="remove-image" type="checkbox"> Vorhandenes Bild entfernen</label><p class="fine-print">JPG, PNG oder WebP · bis 20 MB · automatische Komprimierung.</p><label for="stock">Lagerbestand</label><input type="number" min="0" step="1" id="stock" placeholder="Unbegrenzt"><p class="fine-print">Ohne Angabe: unbegrenzt.</p><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
             <button class="primary-btn" type="submit" id="save-product">Produkt hinzufügen</button>
             <button class="text-btn hidden" type="button" id="cancel-edit">Bearbeitung abbrechen</button>
           </form>
@@ -74,5 +74,5 @@
     </section>
   </main>
   <footer><span>Eichendorff · Administration</span><span>Nur für berechtigte Personen</span></footer>
-</body>
+<dialog id="don-dialog"><form method="dialog"><h2>Spende erfassen</h2><label>Erhaltener Betrag (€)<input id="don-value" type="number" min="0" max="10000" step="0.01" required></label><div class="station-actions"><button class="outline-btn" value="cancel" formnovalidate>Abbrechen</button><button class="primary-btn" value="save">Speichern</button></div></form></dialog></body>
 </html>
