@@ -11,13 +11,13 @@
   }
   function renderProducts() {
     $("product-count").textContent = `${products.length} Produkte`;
-    const groups = ["Heißgetränke","Wasser","Softdrinks","Essen","Snacks","Sonstiges"];
+    const groups = ["Süßes", "Herzhaftes", "Kaltgetränke", "Heißgetränke", "Essen", "Snacks", "Sonstiges"];
     $("product-groups").innerHTML = groups.map(group => {
-      const items = products.filter(p=>( ["Kaffee","Tee"].includes(p.category) ? "Heißgetränke" : p.category )===group && p.active);
+      const items = products.filter(p=>( ["Kaffee","Tee"].includes(p.category) ? "Heißgetränke" : ["Wasser","Softdrinks"].includes(p.category) ? "Kaltgetränke" : p.category )===group && p.active);
       if (!items.length) return "";
       return `<section class="product-group"><h3>${group}</h3><div class="product-grid">${items.map(p=>`
         <article class="product-card">
-          ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy" decoding="async">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
+          ${p.image_path ? `<img class="product-photo" src="${escapeHtml(db.storage.from("product-images").getPublicUrl(p.image_path).data.publicUrl)}" alt="" loading="lazy" decoding="async">` : `<div class="product-symbol">${({Kaffee:"☕",Tee:"♨",Heißgetränke:"☕",Süßes:"◇",Herzhaftes:"🍴",Kaltgetränke:"◉",Essen:"🍴",Wasser:"◌",Softdrinks:"◉",Snacks:"◇",Sonstiges:"＋"})[p.category]||"＋"}</div>`}
           <div class="product-info"><strong>${escapeHtml(p.name)}</strong><span>${(p.price_mode==="donation"?"Spendenbasis":p.price_mode==="free"?"Kostenlos":money(p.price))}${p.stock===0?" · Ausverkauft":p.stock!=null?" · Noch "+p.stock:""}</span></div>
           <div class="quantity-control"><button type="button" aria-label="${escapeHtml(p.name)} verringern" data-minus="${p.id}">−</button><output>${cart.get(p.id)||0}</output><button type="button" aria-label="${escapeHtml(p.name)} erhöhen" data-plus="${p.id}" ${p.stock===0?"disabled":""}>+</button></div>
         </article>`).join("")}</div></section>`;

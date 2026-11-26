@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="responsive.css?v=20261125-4">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
-  <script defer src="admin.js?v=13"></script>
+  <script defer src="admin.js?v=15"></script>
 <link rel="stylesheet" href="modern.css?v=13"><script defer src="performance.js"></script></head>
 <body class="admin-body">
   <header class="site-header">
@@ -60,7 +60,7 @@
           <form id="product-form" class="stack-form">
             <input type="hidden" id="product-id">
             <label for="product-name">Produktname</label><input id="product-name" maxlength="100" placeholder="z. B. Kaffee" required>
-            <label for="product-category">Kategorie</label><select id="product-category"><option>Heißgetränke</option><option>Wasser</option><option>Softdrinks</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
+            <label for="product-category">Kategorie</label><select id="product-category"><option>Süßes</option><option>Herzhaftes</option><option>Kaltgetränke</option><option>Heißgetränke</option><option>Essen</option><option>Snacks</option><option>Sonstiges</option></select>
             <label for="price-mode">Preisart</label><select id="price-mode"><option value="fixed">Festpreis</option><option value="donation">Spendenbasis</option><option value="free">Kostenlos</option></select><label for="cash-visible"><input type="checkbox" id="cash-visible" checked> An der Kasse verfügbar</label><label for="product-price">Festpreis in Euro</label><input id="product-price" type="number" min="0" step="0.01" placeholder="2,50" required>
             <label for="product-image">Produktbild (optional)</label><input id="product-image" type="file" accept="image/jpeg,image/png,image/webp"><img id="image-preview" class="image-preview hidden" alt="Produktbild-Vorschau"><label class="check-label"><input id="remove-image" type="checkbox"> Vorhandenes Bild entfernen</label><p class="fine-print">JPG, PNG oder WebP · bis 20 MB · automatische Komprimierung.</p><label for="stock">Lagerbestand</label><input type="number" min="0" step="1" id="stock" placeholder="Unbegrenzt"><p class="fine-print">Ohne Angabe: unbegrenzt.</p><label class="check-label"><input id="product-active" type="checkbox" checked> Im Bestellportal sichtbar</label>
             <button class="primary-btn" type="submit" id="save-product">Produkt hinzufügen</button>
